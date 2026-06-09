@@ -1,2 +1,3 @@
-def hello() -> str:
-    return "Hello from vigil-python!"
+from .client import Vigil
+
+__all__ = ["Vigil"]
