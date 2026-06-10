@@ -1,37 +1,38 @@
 import httpx
 
+from .async_run import AsyncRun
 from ._client import raise_for_status
 from ._exceptions import VigilTransportError
-from .run import Run
 
-class Vigil:
+
+class AsyncVigil:
     def __init__(self, api_key: str, endpoint: str = "http://localhost:8080") -> None:
         self.api_key = api_key
         self.endpoint = endpoint
-        self._client = httpx.Client(
+        self._client = httpx.AsyncClient(
             base_url=endpoint,
             timeout=httpx.Timeout(connect=5.0, read=30.0, write=30.0, pool=5.0),
             headers={"Authorization": f"Bearer {self.api_key}"},
         )
 
-    def health(self) -> dict:
+    async def health(self) -> dict:
         try:
-            resp = self._client.get("/v1/health")
+            resp = await self._client.get("/v1/health")
         except httpx.RequestError as e:
             raise VigilTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
 
-    def close(self) -> None:
-        self._client.close()
-    
-    def __enter__(self) -> "Vigil":
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
+    async def __aenter__(self) -> "AsyncVigil":
         return self
 
-    def __exit__(self, *exc_info) -> None:
-        self.close()
+    async def __aexit__(self, *exc_info) -> None:
+        await self.aclose()
 
-    def ingest_ai(
+    async def ingest_ai(
         self,
         *,
         model: str,
@@ -57,13 +58,13 @@ class Vigil:
                 payload[k] = v
 
         try:
-            resp = self._client.post("/v1/ingest/ai", json=payload)
+            resp = await self._client.post("/v1/ingest/ai", json=payload)
         except httpx.RequestError as e:
             raise VigilTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
-
-    def ingest_agent_run_start(
+    
+    async def ingest_agent_run_start(
         self,
         *,
         agent_name: str,
@@ -73,15 +74,15 @@ class Vigil:
         
         if input is not None:
             payload["input"] = input
-       
+
         try:
-            resp = self._client.post("/v1/ingest/agent/runs", json=payload)
+            resp = await self._client.post("/v1/ingest/agent/runs", json=payload)
         except httpx.RequestError as e:
             raise VigilTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
 
-    def ingest_agent_run_finish(
+    async def ingest_agent_run_finish(
         self,
         run_id: str,
         *,
@@ -91,6 +92,7 @@ class Vigil:
         total_steps: int = 0,
         total_tokens: int = 0,
         output: str | None = None,
+        
     ) -> None:
         payload: dict = {
             "timestamp": timestamp,
@@ -103,17 +105,14 @@ class Vigil:
             payload["termination_reason"] = termination_reason
         if output is not None:
             payload["output"] = output
-        
+
         try:
-            resp = self._client.post(
-                f"/v1/ingest/agent/runs/{run_id}/finish",
-                json=payload,
-            )
+            resp = await self._client.post(f"/v1/ingest/agent/runs/{run_id}/finish", json=payload)
         except httpx.RequestError as e:
             raise VigilTransportError(str(e)) from e
         raise_for_status(resp)
 
-    def ingest_agent_step(
+    async def ingest_agent_step(
         self,
         *,
         agent_run_id: str,
@@ -131,7 +130,7 @@ class Vigil:
             "step_index": step_index,
             "step_type": step_type,
         }
-
+        
         for k, v in (
             ("content", content),
             ("tool_name", tool_name),
@@ -144,12 +143,11 @@ class Vigil:
                 payload[k] = v
 
         try:
-            resp = self._client.post("/v1/ingest/agent/steps", json=payload)
+            resp = await self._client.post("/v1/ingest/agent/steps", json=payload)
         except httpx.RequestError as e:
             raise VigilTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
-
-    def run(self, agent_name: str, *, input: str | None = None) -> "Run":
-        return Run(client=self, agent_name=agent_name, input=input)
     
+    def run(self, agent_name: str, *, input: str | None = None) -> "AsyncRun":
+        return AsyncRun(client=self, agent_name=agent_name, input=input)
