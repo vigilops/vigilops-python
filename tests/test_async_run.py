@@ -10,7 +10,7 @@ async def test_async_run_lifecycle_completes_with_steps(async_client):
         assert isinstance(run, AsyncRun)
         await run.step("think", "I should respond")
         await run.tool_call("echo", input={"msg": "hi"}, output="hi", ok=True)
-        await run.set_output("done")
+        run.set_output("done") 
 
 @pytest.mark.asyncio
 async def test_async_run_marks_failed_on_exception(async_client):
