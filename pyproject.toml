@@ -14,3 +14,17 @@ dependencies = [
 [build-system]
 requires = ["uv_build>=0.11.17,<0.12.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "anthropic>=0.109.1",
+    "ddgs>=9.14.4",
+    "openai>=2.41.0",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
+    "pytest-dotenv>=0.5.2",
+    "ruff>=0.15.16",
+]
+
+[tool.pytest.ini_options]
+env_files = [".env", ".env.test"]   
