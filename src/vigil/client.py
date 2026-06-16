@@ -208,3 +208,55 @@ class Vigil:
         """
         from .adapters.openai import wrap_client
         return wrap_client(client, self, provider=provider)
+
+    def span(self, step_type: str = "span", *, name: str | None = None) -> "_Span":
+        """Sync context manager that emits a custom step on the active run.
+
+        Usage::
+
+            with client.span("retrieval", name="fetch_docs") as span:
+                docs = fetch(query)
+                span.set(content=f"fetched {len(docs)} docs")
+        """
+        from .decorators import _Span
+        return _Span(self, step_type=step_type, name=name)
+
+    def observe(self, fn=None, *, name: str | None = None, step_type: str = "tool_call"):
+        """Decorator that instruments a sync function.
+
+        Inside an active run: emits a tool_call step (or named step type).
+        Outside a run: emits a standalone ai_trace row.
+
+        Usage::
+
+            @client.observe
+            def web_search(q: str) -> dict: ...
+
+            @client.observe(name="search", step_type="tool_call")
+            def web_search(q: str) -> dict: ...
+        """
+        from .decorators import make_observe
+        dec = make_observe(self, name=name, step_type=step_type)
+        if fn is not None:
+            return dec(fn)
+        return dec
+
+    def agent(self, fn=None, *, name: str | None = None):
+        """Decorator that wraps a sync function in a vigil Run.
+
+        Opens a Run on call, sets _current_run ContextVar so nested
+        @observe calls auto-link, closes the Run on return or exception.
+
+        Usage::
+
+            @client.agent
+            def my_agent(task: str) -> str: ...
+
+            @client.agent(name="research-agent")
+            def my_agent(task: str) -> str: ...
+        """
+        from .decorators import make_agent
+        dec = make_agent(self, name=name)
+        if fn is not None:
+            return dec(fn)
+        return dec
