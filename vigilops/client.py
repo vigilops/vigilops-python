@@ -1,8 +1,15 @@
+from __future__ import annotations
+
+from types import TracebackType
+from typing import Any, Callable, TypeVar
+
 import httpx
 
 from ._client import raise_for_status
 from ._exceptions import VigilTransportError
 from .run import Run
+
+_F = TypeVar("_F", bound=Callable[..., Any])
 
 class Vigil:
     def __init__(self, api_key: str, endpoint: str = "http://localhost:8080") -> None:
@@ -14,7 +21,7 @@ class Vigil:
             headers={"Authorization": f"Bearer {self.api_key}"},
         )
 
-    def health(self) -> dict:
+    def health(self) -> Any:
         try:
             resp = self._client.get("/v1/health")
         except httpx.RequestError as e:
@@ -28,7 +35,7 @@ class Vigil:
     def __enter__(self) -> "Vigil":
         return self
 
-    def __exit__(self, *exc_info) -> None:
+    def __exit__(self, _exc_type: type[BaseException] | None, _exc: BaseException | None, _tb: TracebackType | None) -> None:
         self.close()
 
     def ingest_ai(
@@ -46,7 +53,7 @@ class Vigil:
         request_id: str | None = None,
         agent_run_id: str | None = None,
         metadata: dict | None = None,
-    ) -> dict:
+    ) -> Any:
         if total_tokens is None and input_tokens is not None and output_tokens is not None:
             total_tokens = input_tokens + output_tokens
 
@@ -80,8 +87,8 @@ class Vigil:
         agent_name: str,
         input: str | None = None,
         metadata: dict | None = None,
-    ) -> dict:
-        payload: dict = {"agent_name": agent_name}
+    ) -> Any:
+        payload: dict[str, Any] = {"agent_name": agent_name}
         if input is not None:
             payload["input"] = input
         if metadata is not None:
@@ -150,8 +157,8 @@ class Vigil:
         tokens: int | None = None,
         cost_usd: float | None = None,
         metadata: dict | None = None,
-    ) -> dict:
-        payload: dict = {
+    ) -> Any:
+        payload: dict[str, Any] = {
             "agent_run_id": agent_run_id,
             "step_index": step_index,
             "step_type": step_type,
@@ -187,7 +194,7 @@ class Vigil:
     ) -> "Run":
         return Run(client=self, agent_name=agent_name, input=input, metadata=metadata)
 
-    def wrap_anthropic(self, client, *, provider: str = "anthropic"):
+    def wrap_anthropic(self, client: Any, *, provider: str = "anthropic") -> Any:
         """Return a drop-in proxy that auto-records every messages.create
         call to ai_traces. If used inside `with vigil.run(...) as run:`,
         ai_traces.agent_run_id is set automatically via ContextVar.
@@ -198,7 +205,7 @@ class Vigil:
         from .adapters.anthropic import wrap_client
         return wrap_client(client, self, provider=provider)
 
-    def wrap_openai(self, client, *, provider: str = "openai"):
+    def wrap_openai(self, client: Any, *, provider: str = "openai") -> Any:
         """Drop-in proxy for the OpenAI sync client. Every
         chat.completions.create call records to ai_traces and
         auto-links to the active Run via ContextVar.
@@ -209,7 +216,7 @@ class Vigil:
         from .adapters.openai import wrap_client
         return wrap_client(client, self, provider=provider)
 
-    def span(self, step_type: str = "span", *, name: str | None = None) -> "_Span":
+    def span(self, step_type: str = "span", *, name: str | None = None) -> Any:
         """Sync context manager that emits a custom step on the active run.
 
         Usage::
@@ -221,7 +228,7 @@ class Vigil:
         from .decorators import _Span
         return _Span(self, step_type=step_type, name=name)
 
-    def observe(self, fn=None, *, name: str | None = None, step_type: str = "tool_call"):
+    def observe(self, fn: _F | None = None, *, name: str | None = None, step_type: str = "tool_call") -> Any:
         """Decorator that instruments a sync function.
 
         Inside an active run: emits a tool_call step (or named step type).
@@ -241,7 +248,7 @@ class Vigil:
             return dec(fn)
         return dec
 
-    def agent(self, fn=None, *, name: str | None = None):
+    def agent(self, fn: _F | None = None, *, name: str | None = None) -> Any:
         """Decorator that wraps a sync function in a vigil Run.
 
         Opens a Run on call, sets _current_run ContextVar so nested

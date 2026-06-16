@@ -49,7 +49,7 @@ class _Span:
         self._t0 = time.monotonic()
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> None:
+    def __exit__(self, *_: Any) -> None:
         latency_ms = int((time.monotonic() - self._t0) * 1000)
         try:
             run = get_current_run()
@@ -99,7 +99,7 @@ class _AsyncSpan:
         self._t0 = time.monotonic()
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:
+    async def __aexit__(self, *_: Any) -> None:
         latency_ms = int((time.monotonic() - self._t0) * 1000)
         try:
             run = get_current_run()

@@ -179,14 +179,12 @@ def _extract_reasoning(resp: Any, parsed: Any) -> str | None:
     msg = getattr(choices[0], "message", None)
     if msg is None:
         return None
-    # OpenAI o1/o3/o4
     reasoning = getattr(msg, "reasoning", None)
     if reasoning:
-        return reasoning
-    # DeepSeek reasoner
+        return str(reasoning)
     reasoning = getattr(msg, "reasoning_content", None)
     if reasoning:
-        return reasoning
+        return str(reasoning)
     return None
 
 

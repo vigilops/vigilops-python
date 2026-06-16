@@ -4,6 +4,7 @@ import hashlib
 import json
 import time
 from contextvars import Token
+from types import TracebackType
 from typing import TYPE_CHECKING, Any
 
 from ._context import reset_current_run, set_current_run
@@ -63,7 +64,7 @@ class AsyncRun:
         self._ctx_token = set_current_run(self)
         return self
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:
+    async def __aexit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> None:
         if self._ctx_token is not None:
             reset_current_run(self._ctx_token)
             self._ctx_token = None
