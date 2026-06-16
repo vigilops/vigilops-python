@@ -1,18 +1,10 @@
 """Deliberately broken agent that runs the same web search forever.
 
-Demonstrates vigil's headline differentiator: server-side SHA-256 fingerprint
-on each step lets the loop view spot repeated tool calls — exactly the kind
-of silent failure that costs real money in production.
+Demonstrates vigil's headline differentiator: @observe tracks tool_call
+fingerprints client-side — duplicate SHA-256 → run.mark_loop() fires
+automatically. Zero user code for loop detection.
 
-What this proves
-- Agent picks the SAME query every turn (`target_query`).
-- vigil computes input_fingerprint server-side, so the SDK doesn't have to
-  cooperate for detection to work.
-- `/v1/agent/runs/{id}/loops?at=...` returns hit groups; we print them.
-- `run.mark_loop(step_index)` flips `agent_runs.loop_detected = true` so
-  dashboards/alerts can filter without joining on the loop view.
-
-Run it
+Run it:
     uv run --env-file .env python examples/looping_agent.py
 """
 
@@ -21,67 +13,44 @@ import time
 
 import httpx
 
-from vigil import Vigil
+from vigil import Vigil, get_current_run
 
-from tools import web_search
+from tools import web_search as _web_search
 
 
 TARGET_QUERY = "vigil observability platform"
 LOOP_TURNS = 5
 
+vigil_key = os.environ["VIGIL_API_KEY"]
+vigil_endpoint = os.environ.get("VIGIL_ENDPOINT", "http://localhost:8080")
+
+vigil_client = Vigil(api_key=vigil_key, endpoint=vigil_endpoint)
+
+
+@vigil_client.observe(name="web_search", step_type="tool_call")
+def web_search(q: str, max_results: int = 3) -> dict:
+    return {"results": _web_search(q, max_results=max_results)}
+
+
+@vigil_client.agent(name="looping-agent")
+def run_loop(question: str) -> str:
+    run = get_current_run()
+
+    for _ in range(LOOP_TURNS):
+        # @observe emits tool_call step + checks fingerprint automatically
+        # duplicate on turn 1 → run.mark_loop() fires, no user code needed
+        web_search(q=question, max_results=3)
+
+    return run.id if run else ""
+
 
 def main() -> None:
-    vigil_key = os.environ["VIGIL_API_KEY"]
-    vigil_endpoint = os.environ.get("VIGIL_ENDPOINT", "http://localhost:8080")
+    run_id = run_loop(TARGET_QUERY)
 
-    metadata = {
-        "purpose": "loop-detection-demo",
-        "target_query": TARGET_QUERY,
-        "expected_loop_turns": LOOP_TURNS,
-    }
-
-    with Vigil(api_key=vigil_key, endpoint=vigil_endpoint) as vigil_client:
-        with vigil_client.run("looping-agent",
-                              input=f"answer using query: {TARGET_QUERY}",
-                              metadata=metadata) as run:
-
-            first_repeat_step: int | None = None
-            for turn in range(LOOP_TURNS):
-                run.step("think",
-                         content=f"turn {turn}: I will search '{TARGET_QUERY}' again "
-                                 f"(this agent never updates its plan)",
-                         metadata={"turn": turn})
-
-                t_tool = time.monotonic()
-                results = web_search(TARGET_QUERY, max_results=3)
-                lat = int((time.monotonic() - t_tool) * 1000)
-
-                run.tool_call(
-                    "web_search",
-                    input={"q": TARGET_QUERY},
-                    output={"results": results},
-                    ok=True,
-                    latency_ms=lat,
-                    metadata={"turn": turn, "result_count": len(results)},
-                )
-
-                # First duplicate appears on turn 1 (steps 2, 4, 6, ... are tool_calls).
-                if turn == 1 and first_repeat_step is None:
-                    first_repeat_step = run._step_index  # tool_call step we just sent
-
-            run.set_output(
-                f"agent looped {LOOP_TURNS} times searching '{TARGET_QUERY}' without progress"
-            )
-            if first_repeat_step is not None:
-                run.mark_loop(step_index=first_repeat_step)
-
-    # Wait for agent_steps to flush from the server-side batch buffer.
+    # Wait for batch buffer flush
     time.sleep(0.7)
 
-    # No `at` param — server uses its 30-day default window, which covers
-    # the full run regardless of duration. The ±1s window the server uses
-    # when `at` IS supplied is too narrow for a multi-step agent run.
-    loops_url = f"{vigil_endpoint}/v1/agent/runs/{run.id}/loops"
+    loops_url = f"{vigil_endpoint}/v1/agent/runs/{run_id}/loops"
     resp = httpx.get(
         loops_url,
         headers={"Authorization": f"Bearer {vigil_key}"},
@@ -90,7 +59,7 @@ def main() -> None:
     resp.raise_for_status()
     hits = resp.json()["data"] or []
 
-    print(f"\nrun_id: {run.id}")
+    print(f"\nrun_id: {run_id}")
     print(f"loops endpoint returned {len(hits)} fingerprint group(s):")
     for h in hits:
         print(f"  hits={h['hits']:>3}  tool={h.get('tool_name')!r:<20} "
