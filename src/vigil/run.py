@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import time
 from contextvars import Token
 from typing import TYPE_CHECKING, Any
@@ -43,6 +45,7 @@ class Run:
         self._loop_detected = False
         self._loop_step_index: int | None = None
         self._ctx_token: Token | None = None
+        self._seen_fingerprints: dict[str, int] = {}  # fingerprint → first step_index
 
     @property
     def id(self) -> str:
@@ -150,6 +153,17 @@ class Run:
             cost_usd=cost_usd,
             metadata=metadata,
         )
+
+    def check_fingerprint(self, tool_name: str, tool_input: dict) -> None:
+        """Compute SHA-256 of tool_name+input, mark loop on first duplicate."""
+        fp = hashlib.sha256(
+            (tool_name + json.dumps(tool_input, sort_keys=True, separators=(",", ":"))).encode()
+        ).hexdigest()
+        if fp in self._seen_fingerprints:
+            if not self._loop_detected:
+                self.mark_loop(step_index=self._seen_fingerprints[fp])
+        else:
+            self._seen_fingerprints[fp] = self._step_index
 
     def set_output(self, output: str) -> None:
         self._output = output

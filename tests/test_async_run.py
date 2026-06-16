@@ -30,7 +30,7 @@ async def test_loop_detection_via_repeated_tool_call(async_client):
             await run.tool_call("search", input={"q": "same"}, output={"results": []})
 
     # agent_steps batched server-side; let the 500ms flush fire.
-    await asyncio.sleep(0.7)
+    await asyncio.sleep(2.5)
 
     async with httpx.AsyncClient() as h:
         resp = await h.get(
