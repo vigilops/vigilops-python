@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.10"
 dependencies = [
     "httpx>=0.28.1",
+    "pydantic-ai>=1.107.0",
 ]
 
 [build-system]
@@ -27,4 +28,6 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-env_files = [".env", ".env.test"]   
+env_files = [".env", ".env.test"]
+testpaths = ["tests"]
+asyncio_mode = "strict"
