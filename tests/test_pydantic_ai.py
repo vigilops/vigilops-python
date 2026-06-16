@@ -4,7 +4,6 @@ Uses pydantic-ai's built-in TestModel so no real LLM calls are made.
 """
 import os
 import pytest
-import pytest_asyncio
 
 from vigilops import Vigil
 from vigilops.adapters.pydantic_ai import instrument, run_with_steps

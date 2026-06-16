@@ -19,7 +19,6 @@ Or use the low-level helper when you already have a Run open::
 
 from __future__ import annotations
 
-import time
 import warnings
 from typing import TYPE_CHECKING, Any, AsyncIterable
 
