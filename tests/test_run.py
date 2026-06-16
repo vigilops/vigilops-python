@@ -31,7 +31,7 @@ def test_loop_detection_via_repeated_tool_call(client):
 
     # agent_steps are batched server-side (default 500ms flush); wait so
     # the loops query sees the rows once they hit the hypertable.
-    time.sleep(0.7)
+    time.sleep(2.5)
 
     resp = httpx.get(
         f"{client.endpoint}/v1/agent/runs/{run.id}/loops",
