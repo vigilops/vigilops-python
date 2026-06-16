@@ -130,6 +130,12 @@ class _SyncCompletionsProxy:
         except Exception:
             pass
 
+        if run is not None and resp is not None:
+            try:
+                _emit_think_steps_sync(run, resp, parsed)
+            except Exception:
+                pass
+
     def __getattr__(self, name: str) -> Any:
         return getattr(self._real, name)
 
@@ -160,6 +166,42 @@ class _SyncOpenAIProxy:
 def wrap_client(client: Any, vigil: Vigil, *, provider: str = "openai") -> _SyncOpenAIProxy:
     """Return a proxy that auto-records every chat.completions.create call."""
     return _SyncOpenAIProxy(client, vigil, provider)
+
+
+# ---------------------------------------------------------------------------
+# Think-step helpers
+
+def _extract_reasoning(resp: Any, parsed: Any) -> str | None:
+    """Return reasoning text from o1/o3 (.reasoning) or DeepSeek (.reasoning_content)."""
+    choices = getattr(resp, "choices", None)
+    if not choices:
+        return None
+    msg = getattr(choices[0], "message", None)
+    if msg is None:
+        return None
+    # OpenAI o1/o3/o4
+    reasoning = getattr(msg, "reasoning", None)
+    if reasoning:
+        return reasoning
+    # DeepSeek reasoner
+    reasoning = getattr(msg, "reasoning_content", None)
+    if reasoning:
+        return reasoning
+    return None
+
+
+def _emit_think_steps_sync(run: Any, resp: Any, parsed: Any) -> None:
+    reasoning = _extract_reasoning(resp, parsed)
+    if reasoning:
+        tokens = parsed.tokens_total() if parsed else None
+        run.step("think", content=reasoning, tokens=tokens)
+
+
+async def _emit_think_steps_async(run: Any, resp: Any, parsed: Any) -> None:
+    reasoning = _extract_reasoning(resp, parsed)
+    if reasoning:
+        tokens = parsed.tokens_total() if parsed else None
+        await run.step("think", content=reasoning, tokens=tokens)
 
 
 # ---------------------------------------------------------------------------
@@ -209,6 +251,12 @@ class _AsyncCompletionsProxy:
             )
         except Exception:
             pass
+
+        if run is not None and resp is not None:
+            try:
+                await _emit_think_steps_async(run, resp, parsed)
+            except Exception:
+                pass
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._real, name)
