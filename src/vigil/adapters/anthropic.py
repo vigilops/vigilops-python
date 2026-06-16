@@ -119,6 +119,13 @@ class _SyncMessagesProxy:
             # Observability must never crash the user's program.
             pass
 
+        # Auto-emit think steps from thinking blocks — zero user code needed.
+        if run is not None and resp is not None:
+            try:
+                _emit_think_steps_sync(run, resp, usage)
+            except Exception:
+                pass
+
     def __getattr__(self, name: str) -> Any:
         return getattr(self._real, name)
 
@@ -138,6 +145,32 @@ class _SyncAnthropicProxy:
 def wrap_client(client: Any, vigil: Vigil, *, provider: str = "anthropic") -> _SyncAnthropicProxy:
     """Return a proxy that auto-records every messages.create() call."""
     return _SyncAnthropicProxy(client, vigil, provider)
+
+
+# ---------------------------------------------------------------------------
+# Think-step helpers
+
+def _extract_thinking_blocks(resp: Any, usage: Any) -> list[dict]:
+    """Return list of {content, tokens} for each thinking block in resp."""
+    content = getattr(resp, "content", None) or []
+    input_tokens = getattr(usage, "input_tokens", None) if usage else None
+    output_tokens = getattr(usage, "output_tokens", None) if usage else None
+    total = (input_tokens + output_tokens) if (input_tokens and output_tokens) else None
+    return [
+        {"content": getattr(block, "thinking", ""), "tokens": total}
+        for block in content
+        if getattr(block, "type", None) == "thinking"
+    ]
+
+
+def _emit_think_steps_sync(run: Any, resp: Any, usage: Any) -> None:
+    for block in _extract_thinking_blocks(resp, usage):
+        run.step("think", content=block["content"], tokens=block["tokens"])
+
+
+async def _emit_think_steps_async(run: Any, resp: Any, usage: Any) -> None:
+    for block in _extract_thinking_blocks(resp, usage):
+        await run.step("think", content=block["content"], tokens=block["tokens"])
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +219,13 @@ class _AsyncMessagesProxy:
             )
         except Exception:
             pass
+
+        # Auto-emit think steps from thinking blocks — zero user code needed.
+        if run is not None and resp is not None:
+            try:
+                await _emit_think_steps_async(run, resp, usage)
+            except Exception:
+                pass
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._real, name)
