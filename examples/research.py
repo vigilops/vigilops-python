@@ -12,7 +12,7 @@ import os
 
 import anthropic
 
-from vigil import Vigil
+from vigilops import Vigil
 
 from tools import web_search as _web_search
 
@@ -32,8 +32,8 @@ TOOLS = [
 ]
 
 vigil_client = Vigil(
-    api_key=os.environ["VIGIL_API_KEY"],
-    endpoint=os.environ.get("VIGIL_ENDPOINT", "http://localhost:8080"),
+    api_key=os.environ["VIGILOPS_API_KEY"],
+    endpoint=os.environ.get("VIGILOPS_ENDPOINT", "http://localhost:8080"),
 )
 
 model = os.environ.get("CLAUDE_MODEL", "deepseek-v4-pro")

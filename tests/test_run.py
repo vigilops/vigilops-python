@@ -3,7 +3,7 @@ import time
 import httpx
 import pytest
 
-from vigil import Run
+from vigilops import Run
 
 
 def test_run_lifecycle_completes_with_steps(client):

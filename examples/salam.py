@@ -3,12 +3,12 @@
 import os
 
 import anthropic
-from vigil import Vigil
+from vigilops import Vigil
 
 
 def main():
-    vigil_key = os.environ["VIGIL_API_KEY"]
-    vigil_endpoint = os.environ.get("VIGIL_ENDPOINT", "http://localhost:8080")
+    vigil_key = os.environ["VIGILOPS_API_KEY"]
+    vigil_endpoint = os.environ.get("VIGILOPS_ENDPOINT", "http://localhost:8080")
 
     claude = anthropic.Anthropic(
         api_key=os.environ["ANTHROPIC_API_KEY"],

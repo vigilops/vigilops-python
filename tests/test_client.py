@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from vigil import Vigil, VigilAuthError, VigilTransportError, VigilValidationError
+from vigilops import Vigil, VigilAuthError, VigilTransportError, VigilValidationError
 
 
 def test_health_returns_ok(client):
@@ -31,8 +31,8 @@ def test_ingest_ai_with_all_optional_fields(client):
 
 
 def test_ingest_ai_raises_auth_error_on_bad_key():
-    endpoint = os.getenv("VIGIL_ENDPOINT", "http://localhost:8080")
-    with Vigil(api_key="vgl_obviously_wrong", endpoint=endpoint) as c:
+    endpoint = os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080")
+    with Vigil(api_key="vop_obviously_wrong", endpoint=endpoint) as c:
         with pytest.raises(VigilAuthError):
             c.ingest_ai(model="m", status="success")
 
@@ -43,6 +43,6 @@ def test_ingest_ai_raises_validation_error_on_bad_status(client):
 
 
 def test_health_raises_transport_error_on_unreachable_host():
-    with Vigil(api_key="vgl_x", endpoint="http://127.0.0.1:1") as c:
+    with Vigil(api_key="vop_x", endpoint="http://127.0.0.1:1") as c:
         with pytest.raises(VigilTransportError):
             c.health()

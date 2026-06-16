@@ -13,7 +13,7 @@ from pathlib import Path
 
 import openai
 
-from vigil import Vigil
+from vigilops import Vigil
 
 
 FIXTURE_DIR = Path(__file__).parent / "_fixture_buggy"
@@ -38,8 +38,8 @@ file and line, suggest the one-line fix.
 
 
 vigil_client = Vigil(
-    api_key=os.environ["VIGIL_API_KEY"],
-    endpoint=os.environ.get("VIGIL_ENDPOINT", "http://localhost:8080"),
+    api_key=os.environ["VIGILOPS_API_KEY"],
+    endpoint=os.environ.get("VIGILOPS_ENDPOINT", "http://localhost:8080"),
 )
 
 model = os.environ.get("OPENAI_MODEL", "deepseek-v4-flash")

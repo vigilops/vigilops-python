@@ -6,13 +6,13 @@ import os
 import pytest
 import pytest_asyncio
 
-from vigil import Vigil
-from vigil.adapters.pydantic_ai import instrument, run_with_steps
+from vigilops import Vigil
+from vigilops.adapters.pydantic_ai import instrument, run_with_steps
 
 
 @pytest.fixture
 def client(_sync_project):
-    with Vigil(api_key=_sync_project, endpoint=os.getenv("VIGIL_ENDPOINT", "http://localhost:8080")) as c:
+    with Vigil(api_key=_sync_project, endpoint=os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080")) as c:
         yield c
 
 

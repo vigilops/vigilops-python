@@ -2,8 +2,8 @@
 
 Usage — wrap an agent run so vigil records the full trace::
 
-    from vigil import Vigil
-    from vigil.adapters.pydantic_ai import instrument
+    from vigilops import Vigil
+    from vigilops.adapters.pydantic_ai import instrument
 
     client = Vigil(api_key=...)
     agent = Agent("openai:gpt-4o", ...)
