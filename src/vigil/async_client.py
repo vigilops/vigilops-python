@@ -1,5 +1,8 @@
 import httpx
 
+        
+from .decorators import _AsyncSpan, make_observe_async, make_agent_async
+
 from .async_run import AsyncRun
 from ._client import raise_for_status
 from ._exceptions import VigilTransportError
@@ -203,3 +206,52 @@ class AsyncVigil:
         """
         from .adapters.openai import wrap_async_client
         return wrap_async_client(client, self, provider=provider)
+
+    def span(self, step_type: str = "span", *, name: str | None = None) -> "_AsyncSpan":
+        """Async context manager that emits a custom step on the active async run.
+
+        Usage::
+
+            async with client.span("retrieval", name="fetch_docs") as span:
+                docs = await fetch(query)
+                span.set(content=f"fetched {len(docs)} docs")
+        """
+        return _AsyncSpan(self, step_type=step_type, name=name)
+
+    def observe(self, fn=None, *, name: str | None = None, step_type: str = "tool_call"):
+        """Decorator that instruments an async function.
+
+        Inside an active run: emits a tool_call step (or named step type).
+        Outside a run: emits a standalone ai_trace row.
+
+        Usage::
+
+            @async_client.observe
+            async def web_search(q: str) -> dict: ...
+
+            @async_client.observe(name="search", step_type="tool_call")
+            async def web_search(q: str) -> dict: ...
+        """
+        dec = make_observe_async(self, name=name, step_type=step_type)
+        if fn is not None:
+            return dec(fn)
+        return dec
+
+    def agent(self, fn=None, *, name: str | None = None):
+        """Decorator that wraps an async function in a vigil AsyncRun.
+
+        Opens an AsyncRun on call, sets _current_run ContextVar so nested
+        @observe calls auto-link, closes the run on return or exception.
+
+        Usage::
+
+            @async_client.agent
+            async def my_agent(task: str) -> str: ...
+
+            @async_client.agent(name="research-agent")
+            async def my_agent(task: str) -> str: ...
+        """
+        dec = make_agent_async(self, name=name)
+        if fn is not None:
+            return dec(fn)
+        return dec
