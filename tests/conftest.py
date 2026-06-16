@@ -44,10 +44,13 @@ def _server_reachable() -> bool:
 # One project per test session to avoid FK-violation batch failures that occur
 # when per-test project deletion races with the server's 500ms batch flush.
 
+
 @pytest.fixture(scope="session")
 def _sync_project():
     if not _server_reachable():
-        pytest.skip("vigil server not reachable — run `make db-up && make run` in core/")
+        pytest.skip(
+            "vigil server not reachable — run `make db-up && make run` in core/"
+        )
     project_id, api_key = _provision_key("pytest-sync-session")
     yield api_key
     _delete_project(project_id)
@@ -56,13 +59,16 @@ def _sync_project():
 @pytest.fixture(scope="session")
 def _async_project():
     if not _server_reachable():
-        pytest.skip("vigil server not reachable — run `make db-up && make run` in core/")
+        pytest.skip(
+            "vigil server not reachable — run `make db-up && make run` in core/"
+        )
     project_id, api_key = _provision_key("pytest-async-session")
     yield api_key
     _delete_project(project_id)
 
 
 # ── per-test client fixtures (function scope, reuse session project) ──────────
+
 
 @pytest.fixture
 def client(_sync_project):

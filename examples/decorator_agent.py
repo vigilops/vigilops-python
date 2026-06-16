@@ -3,6 +3,7 @@
 Run:
     VIGILOPS_API_KEY=vgl_... uv run python examples/decorator_agent.py
 """
+
 import os
 from vigilops import Vigil
 

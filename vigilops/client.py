@@ -11,6 +11,7 @@ from .run import Run
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 
+
 class Vigil:
     def __init__(self, api_key: str, endpoint: str = "http://localhost:8080") -> None:
         self.api_key = api_key
@@ -31,11 +32,16 @@ class Vigil:
 
     def close(self) -> None:
         self._client.close()
-    
+
     def __enter__(self) -> "Vigil":
         return self
 
-    def __exit__(self, _exc_type: type[BaseException] | None, _exc: BaseException | None, _tb: TracebackType | None) -> None:
+    def __exit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc: BaseException | None,
+        _tb: TracebackType | None,
+    ) -> None:
         self.close()
 
     def ingest_ai(
@@ -54,7 +60,11 @@ class Vigil:
         agent_run_id: str | None = None,
         metadata: dict | None = None,
     ) -> Any:
-        if total_tokens is None and input_tokens is not None and output_tokens is not None:
+        if (
+            total_tokens is None
+            and input_tokens is not None
+            and output_tokens is not None
+        ):
             total_tokens = input_tokens + output_tokens
 
         payload: dict = {"model": model, "status": status}
@@ -132,7 +142,7 @@ class Vigil:
         ):
             if v is not None:
                 payload[k] = v
-        
+
         try:
             resp = self._client.post(
                 f"/v1/ingest/agent/runs/{run_id}/finish",
@@ -203,6 +213,7 @@ class Vigil:
         Anthropic-compatible endpoint (e.g. "deepseek", "openrouter").
         """
         from .adapters.anthropic import wrap_client
+
         return wrap_client(client, self, provider=provider)
 
     def wrap_openai(self, client: Any, *, provider: str = "openai") -> Any:
@@ -214,6 +225,7 @@ class Vigil:
         endpoints (e.g. "groq", "together", "azure", "openrouter").
         """
         from .adapters.openai import wrap_client
+
         return wrap_client(client, self, provider=provider)
 
     def span(self, step_type: str = "span", *, name: str | None = None) -> Any:
@@ -226,9 +238,16 @@ class Vigil:
                 span.set(content=f"fetched {len(docs)} docs")
         """
         from .decorators import _Span
+
         return _Span(self, step_type=step_type, name=name)
 
-    def observe(self, fn: _F | None = None, *, name: str | None = None, step_type: str = "tool_call") -> Any:
+    def observe(
+        self,
+        fn: _F | None = None,
+        *,
+        name: str | None = None,
+        step_type: str = "tool_call",
+    ) -> Any:
         """Decorator that instruments a sync function.
 
         Inside an active run: emits a tool_call step (or named step type).
@@ -243,6 +262,7 @@ class Vigil:
             def web_search(q: str) -> dict: ...
         """
         from .decorators import make_observe
+
         dec = make_observe(self, name=name, step_type=step_type)
         if fn is not None:
             return dec(fn)
@@ -263,6 +283,7 @@ class Vigil:
             def my_agent(task: str) -> str: ...
         """
         from .decorators import make_agent
+
         dec = make_agent(self, name=name)
         if fn is not None:
             return dec(fn)

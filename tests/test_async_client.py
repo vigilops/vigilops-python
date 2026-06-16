@@ -3,13 +3,19 @@ import os
 
 import pytest
 
-from vigilops._exceptions import VigilAuthError, VigilTransportError, VigilValidationError
+from vigilops._exceptions import (
+    VigilAuthError,
+    VigilTransportError,
+    VigilValidationError,
+)
 from vigilops.async_client import AsyncVigil
+
 
 @pytest.mark.asyncio
 async def test_async_health_returns_ok(async_client):
     body = await async_client.health()
     assert body["status"] == "ok"
+
 
 @pytest.mark.asyncio
 async def test_async_ingest_ai_minimum_payload(async_client):
@@ -17,16 +23,17 @@ async def test_async_ingest_ai_minimum_payload(async_client):
     assert "id" in body
     assert "timestamp" in body
 
+
 @pytest.mark.asyncio
 async def test_ingest_ai_conncurent_calls_parallelize(async_client):
     tasks = [
-        async_client.ingest_ai(model=f"model-{i}", status="success")
-        for i in range(10)
+        async_client.ingest_ai(model=f"model-{i}", status="success") for i in range(10)
     ]
     results = await asyncio.gather(*tasks)
     assert len(results) == 10
     for body in results:
         assert "id" in body
+
 
 @pytest.mark.asyncio
 async def test_agent_lifecycle_via_low_level_methods(async_client):
@@ -45,6 +52,7 @@ async def test_agent_lifecycle_via_low_level_methods(async_client):
         total_steps=1,
         total_tokens=0,
     )
+
 
 @pytest.mark.asyncio
 async def test_ingest_ai_raises_auth_error_on_bad_key():

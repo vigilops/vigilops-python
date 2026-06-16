@@ -13,7 +13,10 @@ def client():
     api_key = os.getenv("VIGILOPS_API_KEY")
     if not api_key:
         pytest.skip("VIGILOPS_API_KEY not set — run `make seed` and export it")
-    with Vigil(api_key=api_key, endpoint=os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080")) as c:
+    with Vigil(
+        api_key=api_key,
+        endpoint=os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080"),
+    ) as c:
         yield c
 
 
@@ -22,11 +25,15 @@ async def async_client():
     api_key = os.getenv("VIGILOPS_API_KEY")
     if not api_key:
         pytest.skip("VIGILOPS_API_KEY not set")
-    async with AsyncVigil(api_key=api_key, endpoint=os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080")) as c:
+    async with AsyncVigil(
+        api_key=api_key,
+        endpoint=os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080"),
+    ) as c:
         yield c
 
 
 # ── @observe sync ─────────────────────────────────────────────────────────────
+
 
 def test_observe_returns_function_value(client):
     @client.observe
@@ -85,20 +92,25 @@ def test_observe_emits_ai_trace_outside_run(client):
 
 def test_observe_fail_soft_on_server_down(client):
     """observe() must not crash user code even when server is unreachable."""
+
     @client.observe
     def my_tool(x: int) -> int:
         return x + 1
 
     with mock.patch.object(client, "ingest_ai", side_effect=Exception("network down")):
         import warnings
+
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             result = my_tool(4)
             assert result == 5
-            assert any("vigil observe emit failed" in str(warning.message) for warning in w)
+            assert any(
+                "vigil observe emit failed" in str(warning.message) for warning in w
+            )
 
 
 # ── @observe async ────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_observe_async_returns_value(async_client):
@@ -126,6 +138,7 @@ async def test_observe_async_emits_tool_call_inside_run(async_client):
 
 
 # ── @agent sync ───────────────────────────────────────────────────────────────
+
 
 def test_agent_returns_function_value(client):
     @client.agent(name="test-sync-agent")
@@ -163,6 +176,7 @@ def test_agent_sets_current_run(client):
 
 def test_agent_observe_tool_call_linked(client):
     """@observe inside @agent must complete without error."""
+
     @client.observe
     def search(q: str) -> dict:
         return {"r": q}
@@ -177,6 +191,7 @@ def test_agent_observe_tool_call_linked(client):
 
 
 # ── @agent async ──────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_agent_async_returns_value(async_client):

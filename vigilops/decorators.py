@@ -57,7 +57,12 @@ class _Span:
                 meta = {**(self._metadata or {}), "latency_ms": latency_ms}
                 if self._name:
                     meta["span_name"] = self._name
-                run.step(self._step_type, content=self._content, tokens=self._tokens, metadata=meta)
+                run.step(
+                    self._step_type,
+                    content=self._content,
+                    tokens=self._tokens,
+                    metadata=meta,
+                )
         except Exception as e:
             warnings.warn(f"vigil span emit failed: {e}", stacklevel=2)
 
@@ -107,12 +112,19 @@ class _AsyncSpan:
                 meta = {**(self._metadata or {}), "latency_ms": latency_ms}
                 if self._name:
                     meta["span_name"] = self._name
-                await run.step(self._step_type, content=self._content, tokens=self._tokens, metadata=meta)
+                await run.step(
+                    self._step_type,
+                    content=self._content,
+                    tokens=self._tokens,
+                    metadata=meta,
+                )
         except Exception as e:
             warnings.warn(f"vigil span emit failed: {e}", stacklevel=2)
 
 
-def make_observe(vigil_client: Any, name: str | None, step_type: str) -> Callable[[F], F]:
+def make_observe(
+    vigil_client: Any, name: str | None, step_type: str
+) -> Callable[[F], F]:
     """Return a decorator that instruments a sync function."""
 
     def decorator(fn: F) -> F:
@@ -149,7 +161,9 @@ def make_observe(vigil_client: Any, name: str | None, step_type: str) -> Callabl
     return decorator
 
 
-def make_observe_async(vigil_client: Any, name: str | None, step_type: str) -> Callable[[F], F]:
+def make_observe_async(
+    vigil_client: Any, name: str | None, step_type: str
+) -> Callable[[F], F]:
     """Return a decorator that instruments an async function."""
 
     def decorator(fn: F) -> F:
@@ -237,6 +251,7 @@ def make_agent_async(vigil_client: Any, name: str | None) -> Callable[[F], F]:
 
 
 # ── emit helpers ──────────────────────────────────────────────────────────────
+
 
 def _emit_sync(
     vigil_client: Any,
@@ -331,6 +346,7 @@ async def _emit_async(
 
 
 # ── serialisation helpers ─────────────────────────────────────────────────────
+
 
 def _build_input(args: tuple, kwargs: dict) -> dict:
     result: dict = {}

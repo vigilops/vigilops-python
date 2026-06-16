@@ -2,6 +2,7 @@
 
 Uses pydantic-ai's built-in TestModel so no real LLM calls are made.
 """
+
 import os
 import pytest
 
@@ -11,7 +12,10 @@ from vigilops.adapters.pydantic_ai import instrument, run_with_steps
 
 @pytest.fixture
 def client(_sync_project):
-    with Vigil(api_key=_sync_project, endpoint=os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080")) as c:
+    with Vigil(
+        api_key=_sync_project,
+        endpoint=os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080"),
+    ) as c:
         yield c
 
 

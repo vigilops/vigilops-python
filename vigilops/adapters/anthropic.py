@@ -62,7 +62,9 @@ def parse_response(resp: Any) -> ParsedAnthropicResponse:
     return ParsedAnthropicResponse(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-        total_tokens=(input_tokens + output_tokens) if (input_tokens is not None and output_tokens is not None) else None,
+        total_tokens=(input_tokens + output_tokens)
+        if (input_tokens is not None and output_tokens is not None)
+        else None,
         request_id=getattr(resp, "id", None),
         stop_reason=getattr(resp, "stop_reason", None),
         raw=resp,
@@ -71,6 +73,7 @@ def parse_response(resp: Any) -> ParsedAnthropicResponse:
 
 # ---------------------------------------------------------------------------
 # Sync wrapper
+
 
 class _SyncMessagesProxy:
     """Proxies anthropic.Messages — only `create` is intercepted."""
@@ -95,7 +98,9 @@ class _SyncMessagesProxy:
         finally:
             self._record(kwargs, resp, status, err, int((time.monotonic() - t0) * 1000))
 
-    def _record(self, kwargs: dict, resp: Any, status: str, err: str | None, latency_ms: int) -> None:
+    def _record(
+        self, kwargs: dict, resp: Any, status: str, err: str | None, latency_ms: int
+    ) -> None:
         usage = getattr(resp, "usage", None) if resp is not None else None
         run = get_current_run()
         try:
@@ -111,7 +116,9 @@ class _SyncMessagesProxy:
                 agent_run_id=run.id if run is not None else None,
                 metadata={
                     "tool_choice": kwargs.get("tool_choice"),
-                    "stop_reason": getattr(resp, "stop_reason", None) if resp is not None else None,
+                    "stop_reason": getattr(resp, "stop_reason", None)
+                    if resp is not None
+                    else None,
                     "num_tools_in_request": len(kwargs.get("tools") or []),
                 },
             )
@@ -142,13 +149,16 @@ class _SyncAnthropicProxy:
         return getattr(self._real, name)
 
 
-def wrap_client(client: Any, vigil: Vigil, *, provider: str = "anthropic") -> _SyncAnthropicProxy:
+def wrap_client(
+    client: Any, vigil: Vigil, *, provider: str = "anthropic"
+) -> _SyncAnthropicProxy:
     """Return a proxy that auto-records every messages.create() call."""
     return _SyncAnthropicProxy(client, vigil, provider)
 
 
 # ---------------------------------------------------------------------------
 # Think-step helpers
+
 
 def _extract_thinking_blocks(resp: Any, usage: Any) -> list[dict]:
     """Return list of {content, tokens} for each thinking block in resp."""
@@ -176,6 +186,7 @@ async def _emit_think_steps_async(run: Any, resp: Any, usage: Any) -> None:
 # ---------------------------------------------------------------------------
 # Async wrapper — mirrors the sync version
 
+
 class _AsyncMessagesProxy:
     def __init__(self, real_messages: Any, vigil: AsyncVigil, provider: str) -> None:
         self._real = real_messages
@@ -195,9 +206,13 @@ class _AsyncMessagesProxy:
             err = str(e)[:2000]
             raise
         finally:
-            await self._record(kwargs, resp, status, err, int((time.monotonic() - t0) * 1000))
+            await self._record(
+                kwargs, resp, status, err, int((time.monotonic() - t0) * 1000)
+            )
 
-    async def _record(self, kwargs: dict, resp: Any, status: str, err: str | None, latency_ms: int) -> None:
+    async def _record(
+        self, kwargs: dict, resp: Any, status: str, err: str | None, latency_ms: int
+    ) -> None:
         usage = getattr(resp, "usage", None) if resp is not None else None
         run = get_current_run()
         try:
@@ -213,7 +228,9 @@ class _AsyncMessagesProxy:
                 agent_run_id=run.id if run is not None else None,
                 metadata={
                     "tool_choice": kwargs.get("tool_choice"),
-                    "stop_reason": getattr(resp, "stop_reason", None) if resp is not None else None,
+                    "stop_reason": getattr(resp, "stop_reason", None)
+                    if resp is not None
+                    else None,
                     "num_tools_in_request": len(kwargs.get("tools") or []),
                 },
             )
@@ -240,6 +257,8 @@ class _AsyncAnthropicProxy:
         return getattr(self._real, name)
 
 
-def wrap_async_client(client: Any, vigil: AsyncVigil, *, provider: str = "anthropic") -> _AsyncAnthropicProxy:
+def wrap_async_client(
+    client: Any, vigil: AsyncVigil, *, provider: str = "anthropic"
+) -> _AsyncAnthropicProxy:
     """Async sibling of wrap_client."""
     return _AsyncAnthropicProxy(client, vigil, provider)

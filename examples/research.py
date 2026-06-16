@@ -42,7 +42,9 @@ provider = os.environ.get("LLM_PROVIDER", "deepseek")
 claude = vigil_client.wrap_anthropic(
     anthropic.Anthropic(
         api_key=os.environ["ANTHROPIC_API_KEY"],
-        base_url=os.environ.get("ANTHROPIC_ENDPOINT", "https://api.deepseek.com/anthropic"),
+        base_url=os.environ.get(
+            "ANTHROPIC_ENDPOINT", "https://api.deepseek.com/anthropic"
+        ),
     ),
     provider=provider,
 )
@@ -70,7 +72,9 @@ def run_agent(question: str) -> str:
 
         resp = claude.messages.create(**kwargs)
 
-        text = "\n".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+        text = "\n".join(
+            b.text for b in resp.content if getattr(b, "type", None) == "text"
+        )
         tool_uses = [b for b in resp.content if getattr(b, "type", None) == "tool_use"]
 
         # thinking blocks auto-emitted as think steps by wrap_anthropic
@@ -84,11 +88,13 @@ def run_agent(question: str) -> str:
         for tu in tool_uses:
             # web_search is @observe — tool_call step emitted automatically
             result = web_search(q=tu.input["q"], max_results=5)
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": tu.id,
-                "content": json.dumps(result),
-            })
+            tool_results.append(
+                {
+                    "type": "tool_result",
+                    "tool_use_id": tu.id,
+                    "content": json.dumps(result),
+                }
+            )
 
         messages.append({"role": "assistant", "content": resp.content})
         messages.append({"role": "user", "content": tool_results})

@@ -12,7 +12,9 @@ def main():
 
     claude = anthropic.Anthropic(
         api_key=os.environ["ANTHROPIC_API_KEY"],
-        base_url=os.environ.get("ANTHROPIC_ENDPOINT", "https://api.deepseek.com/anthropic"),
+        base_url=os.environ.get(
+            "ANTHROPIC_ENDPOINT", "https://api.deepseek.com/anthropic"
+        ),
     )
 
     with Vigil(api_key=vigil_key, endpoint=vigil_endpoint) as vigil_client:
@@ -25,7 +27,9 @@ def main():
                 ],
             )
 
-            text_blocks = [b for b in resp.content if getattr(b, "type", None) == "text"]
+            text_blocks = [
+                b for b in resp.content if getattr(b, "type", None) == "text"
+            ]
             if not text_blocks:
                 run.step(
                     "think",

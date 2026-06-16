@@ -56,6 +56,7 @@ openai_client = vigil_client.wrap_openai(
 
 # ── tools ─────────────────────────────────────────────────────────────────────
 
+
 def _safe_path(rel: str) -> Path:
     p = (FIXTURE_DIR / rel).resolve()
     if FIXTURE_DIR.resolve() not in p.parents and p != FIXTURE_DIR.resolve():
@@ -85,7 +86,9 @@ def grep(pattern: str, rel: str = ".") -> list:
     targets = [base] if base.is_file() else list(base.rglob("*.py"))
     for f in targets:
         try:
-            for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), start=1):
+            for i, line in enumerate(
+                f.read_text(encoding="utf-8").splitlines(), start=1
+            ):
                 if pattern in line:
                     out.append(f"{f.relative_to(FIXTURE_DIR)}:{i}:{line}")
         except (OSError, UnicodeDecodeError):
@@ -104,7 +107,10 @@ TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "rel": {"type": "string", "description": "relative path; '.' for root"},
+                    "rel": {
+                        "type": "string",
+                        "description": "relative path; '.' for root",
+                    },
                 },
             },
         },
@@ -132,7 +138,10 @@ TOOLS = [
                 "type": "object",
                 "properties": {
                     "pattern": {"type": "string"},
-                    "rel": {"type": "string", "description": "subdir or file; '.' for all"},
+                    "rel": {
+                        "type": "string",
+                        "description": "subdir or file; '.' for all",
+                    },
                 },
                 "required": ["pattern"],
             },
@@ -152,6 +161,7 @@ SYSTEM_PROMPT = (
 
 
 # ── agent ─────────────────────────────────────────────────────────────────────
+
 
 @vigil_client.agent(name="bug-triage-agent")
 def run_agent(report: str) -> str:
@@ -192,40 +202,51 @@ def run_agent(report: str) -> str:
                 args = {"_raw": tc.function.arguments}
 
             if impl is None:
-                tool_results.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": json.dumps({"error": f"unknown tool: {name}"}),
-                })
+                tool_results.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": json.dumps({"error": f"unknown tool: {name}"}),
+                    }
+                )
                 continue
 
             # impl is @observe-decorated — tool_call step emitted automatically
             try:
                 result = impl(**args)
-                tool_results.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": json.dumps({"result": result}),
-                })
+                tool_results.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": json.dumps({"result": result}),
+                    }
+                )
             except Exception as e:
-                tool_results.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": json.dumps({"error": str(e)[:500]}),
-                })
+                tool_results.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": json.dumps({"error": str(e)[:500]}),
+                    }
+                )
 
-        messages.append({
-            "role": "assistant",
-            "content": text,
-            "tool_calls": [
-                {
-                    "id": tc.id,
-                    "type": "function",
-                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
-                }
-                for tc in tool_calls
-            ],
-        })
+        messages.append(
+            {
+                "role": "assistant",
+                "content": text,
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    for tc in tool_calls
+                ],
+            }
+        )
         messages.extend(tool_results)
     else:
         raise RuntimeError(f"agent exceeded {MAX_TURNS} turns")

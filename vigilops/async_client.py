@@ -37,7 +37,12 @@ class AsyncVigil:
     async def __aenter__(self) -> "AsyncVigil":
         return self
 
-    async def __aexit__(self, _exc_type: type[BaseException] | None, _exc: BaseException | None, _tb: TracebackType | None) -> None:
+    async def __aexit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc: BaseException | None,
+        _tb: TracebackType | None,
+    ) -> None:
         await self.aclose()
 
     async def ingest_ai(
@@ -56,7 +61,11 @@ class AsyncVigil:
         agent_run_id: str | None = None,
         metadata: dict | None = None,
     ) -> Any:
-        if total_tokens is None and input_tokens is not None and output_tokens is not None:
+        if (
+            total_tokens is None
+            and input_tokens is not None
+            and output_tokens is not None
+        ):
             total_tokens = input_tokens + output_tokens
 
         payload: dict = {"model": model, "status": status}
@@ -82,7 +91,7 @@ class AsyncVigil:
             raise VigilTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
-    
+
     async def ingest_agent_run_start(
         self,
         *,
@@ -91,7 +100,7 @@ class AsyncVigil:
         metadata: dict | None = None,
     ) -> Any:
         payload: dict = {"agent_name": agent_name}
-        
+
         if input is not None:
             payload["input"] = input
         if metadata is not None:
@@ -126,7 +135,7 @@ class AsyncVigil:
             "total_tokens": total_tokens,
             "loop_detected": loop_detected,
         }
-        
+
         for k, v in (
             ("termination_reason", termination_reason),
             ("total_cost_usd", total_cost_usd),
@@ -138,7 +147,9 @@ class AsyncVigil:
                 payload[k] = v
 
         try:
-            resp = await self._client.post(f"/v1/ingest/agent/runs/{run_id}/finish", json=payload)
+            resp = await self._client.post(
+                f"/v1/ingest/agent/runs/{run_id}/finish", json=payload
+            )
         except httpx.RequestError as e:
             raise VigilTransportError(str(e)) from e
         raise_for_status(resp)
@@ -185,7 +196,7 @@ class AsyncVigil:
             raise VigilTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
-    
+
     def run(
         self,
         agent_name: str,
@@ -193,7 +204,9 @@ class AsyncVigil:
         input: str | None = None,
         metadata: dict | None = None,
     ) -> "AsyncRun":
-        return AsyncRun(client=self, agent_name=agent_name, input=input, metadata=metadata)
+        return AsyncRun(
+            client=self, agent_name=agent_name, input=input, metadata=metadata
+        )
 
     def wrap_anthropic(self, client: Any, *, provider: str = "anthropic") -> Any:
         """Async sibling of Vigil.wrap_anthropic. Wraps an
@@ -202,6 +215,7 @@ class AsyncVigil:
         to the current AsyncRun via ContextVar.
         """
         from .adapters.anthropic import wrap_async_client
+
         return wrap_async_client(client, self, provider=provider)
 
     def wrap_openai(self, client: Any, *, provider: str = "openai") -> Any:
@@ -210,6 +224,7 @@ class AsyncVigil:
         to ai_traces and auto-links to the current AsyncRun.
         """
         from .adapters.openai import wrap_async_client
+
         return wrap_async_client(client, self, provider=provider)
 
     def span(self, step_type: str = "span", *, name: str | None = None) -> "_AsyncSpan":
@@ -223,7 +238,13 @@ class AsyncVigil:
         """
         return _AsyncSpan(self, step_type=step_type, name=name)
 
-    def observe(self, fn: _F | None = None, *, name: str | None = None, step_type: str = "tool_call") -> Any:
+    def observe(
+        self,
+        fn: _F | None = None,
+        *,
+        name: str | None = None,
+        step_type: str = "tool_call",
+    ) -> Any:
         """Decorator that instruments an async function.
 
         Inside an active run: emits a tool_call step (or named step type).

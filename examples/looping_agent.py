@@ -62,8 +62,10 @@ def main() -> None:
     print(f"\nrun_id: {run_id}")
     print(f"loops endpoint returned {len(hits)} fingerprint group(s):")
     for h in hits:
-        print(f"  hits={h['hits']:>3}  tool={h.get('tool_name')!r:<20} "
-              f"first_step={h['step_indices'][0]}  later_steps={h['step_indices'][1:]}")
+        print(
+            f"  hits={h['hits']:>3}  tool={h.get('tool_name')!r:<20} "
+            f"first_step={h['step_indices'][0]}  later_steps={h['step_indices'][1:]}"
+        )
 
     if not any(h["hits"] >= 2 for h in hits):
         raise SystemExit("expected at least one fingerprint group with hits >= 2")
