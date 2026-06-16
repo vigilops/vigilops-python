@@ -1,14 +1,14 @@
 """Minimal @observe + @agent example.
 
 Run:
-    VIGIL_API_KEY=vgl_... uv run python examples/decorator_agent.py
+    VIGILOPS_API_KEY=vgl_... uv run python examples/decorator_agent.py
 """
 import os
-from vigil import Vigil
+from vigilops import Vigil
 
 client = Vigil(
-    api_key=os.environ["VIGIL_API_KEY"],
-    endpoint=os.environ.get("VIGIL_ENDPOINT", "http://localhost:8080"),
+    api_key=os.environ["VIGILOPS_API_KEY"],
+    endpoint=os.environ.get("VIGILOPS_ENDPOINT", "http://localhost:8080"),
 )
 
 

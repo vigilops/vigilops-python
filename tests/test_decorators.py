@@ -4,25 +4,25 @@ import unittest.mock as mock
 import pytest
 import pytest_asyncio
 
-from vigil import Vigil, AsyncVigil
-from vigil._context import get_current_run
+from vigilops import Vigil, AsyncVigil
+from vigilops._context import get_current_run
 
 
 @pytest.fixture
 def client():
-    api_key = os.getenv("VIGIL_API_KEY")
+    api_key = os.getenv("VIGILOPS_API_KEY")
     if not api_key:
-        pytest.skip("VIGIL_API_KEY not set — run `make seed` and export it")
-    with Vigil(api_key=api_key, endpoint=os.getenv("VIGIL_ENDPOINT", "http://localhost:8080")) as c:
+        pytest.skip("VIGILOPS_API_KEY not set — run `make seed` and export it")
+    with Vigil(api_key=api_key, endpoint=os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080")) as c:
         yield c
 
 
 @pytest_asyncio.fixture
 async def async_client():
-    api_key = os.getenv("VIGIL_API_KEY")
+    api_key = os.getenv("VIGILOPS_API_KEY")
     if not api_key:
-        pytest.skip("VIGIL_API_KEY not set")
-    async with AsyncVigil(api_key=api_key, endpoint=os.getenv("VIGIL_ENDPOINT", "http://localhost:8080")) as c:
+        pytest.skip("VIGILOPS_API_KEY not set")
+    async with AsyncVigil(api_key=api_key, endpoint=os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080")) as c:
         yield c
 
 

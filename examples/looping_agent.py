@@ -13,7 +13,7 @@ import time
 
 import httpx
 
-from vigil import Vigil, get_current_run
+from vigilops import Vigil, get_current_run
 
 from tools import web_search as _web_search
 
@@ -21,8 +21,8 @@ from tools import web_search as _web_search
 TARGET_QUERY = "vigil observability platform"
 LOOP_TURNS = 5
 
-vigil_key = os.environ["VIGIL_API_KEY"]
-vigil_endpoint = os.environ.get("VIGIL_ENDPOINT", "http://localhost:8080")
+vigil_key = os.environ["VIGILOPS_API_KEY"]
+vigil_endpoint = os.environ.get("VIGILOPS_ENDPOINT", "http://localhost:8080")
 
 vigil_client = Vigil(api_key=vigil_key, endpoint=vigil_endpoint)
 

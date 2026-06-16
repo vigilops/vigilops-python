@@ -5,7 +5,7 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_async_run_lifecycle_completes_with_steps(async_client):
-    from vigil import AsyncRun
+    from vigilops import AsyncRun
     async with async_client.run("async-test-agent", input="hi") as run:
         assert isinstance(run, AsyncRun)
         await run.step("think", "I should respond")

@@ -4,9 +4,9 @@ import httpx
 import pytest
 import pytest_asyncio
 
-from vigil import AsyncVigil, Vigil
+from vigilops import AsyncVigil, Vigil
 
-_ENDPOINT = os.getenv("VIGIL_ENDPOINT", "http://localhost:8080")
+_ENDPOINT = os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080")
 _ADMIN_BASE = f"{_ENDPOINT}/v1/admin"
 
 

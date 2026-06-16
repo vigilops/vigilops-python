@@ -3889,7 +3889,7 @@ wheels = [
 ]
 
 [[package]]
-name = "vigil"
+name = "vigilops"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

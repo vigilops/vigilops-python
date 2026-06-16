@@ -3,8 +3,8 @@ import os
 
 import pytest
 
-from vigil._exceptions import VigilAuthError, VigilTransportError, VigilValidationError
-from vigil.async_client import AsyncVigil
+from vigilops._exceptions import VigilAuthError, VigilTransportError, VigilValidationError
+from vigilops.async_client import AsyncVigil
 
 @pytest.mark.asyncio
 async def test_async_health_returns_ok(async_client):
@@ -48,8 +48,8 @@ async def test_agent_lifecycle_via_low_level_methods(async_client):
 
 @pytest.mark.asyncio
 async def test_ingest_ai_raises_auth_error_on_bad_key():
-    endpoint = os.getenv("VIGIL_ENDPOINT", "http://localhost:8080")
-    async with AsyncVigil(api_key="vgl_obviously_wrong", endpoint=endpoint) as c:
+    endpoint = os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080")
+    async with AsyncVigil(api_key="vop_obviously_wrong", endpoint=endpoint) as c:
         with pytest.raises(VigilAuthError):
             await c.ingest_ai(model="m", status="success")
 
@@ -62,6 +62,6 @@ async def test_ingest_ai_raises_validation_error_on_bad_status(async_client):
 
 @pytest.mark.asyncio
 async def test_health_raises_transport_error_on_unreachable_host():
-    async with AsyncVigil(api_key="vgl_x", endpoint="http://127.0.0.1:1") as c:
+    async with AsyncVigil(api_key="vop_x", endpoint="http://127.0.0.1:1") as c:
         with pytest.raises(VigilTransportError):
             await c.health()
