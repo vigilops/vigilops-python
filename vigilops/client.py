@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from types import TracebackType
-from typing import Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
+
+if TYPE_CHECKING:
+    from .adapters.anthropic import _SyncAnthropicProxy
+    from .adapters.openai import _SyncOpenAIProxy
+    from .decorators import _Span
 
 import httpx
 
@@ -194,7 +199,7 @@ class Vigil:
     ) -> "Run":
         return Run(client=self, agent_name=agent_name, input=input, metadata=metadata)
 
-    def wrap_anthropic(self, client: Any, *, provider: str = "anthropic") -> Any:
+    def wrap_anthropic(self, client: Any, *, provider: str = "anthropic") -> "_SyncAnthropicProxy":
         """Return a drop-in proxy that auto-records every messages.create
         call to ai_traces. If used inside `with vigil.run(...) as run:`,
         ai_traces.agent_run_id is set automatically via ContextVar.
@@ -205,7 +210,7 @@ class Vigil:
         from .adapters.anthropic import wrap_client
         return wrap_client(client, self, provider=provider)
 
-    def wrap_openai(self, client: Any, *, provider: str = "openai") -> Any:
+    def wrap_openai(self, client: Any, *, provider: str = "openai") -> "_SyncOpenAIProxy":
         """Drop-in proxy for the OpenAI sync client. Every
         chat.completions.create call records to ai_traces and
         auto-links to the active Run via ContextVar.
@@ -216,7 +221,7 @@ class Vigil:
         from .adapters.openai import wrap_client
         return wrap_client(client, self, provider=provider)
 
-    def span(self, step_type: str = "span", *, name: str | None = None) -> Any:
+    def span(self, step_type: str = "span", *, name: str | None = None) -> "_Span":
         """Sync context manager that emits a custom step on the active run.
 
         Usage::
@@ -228,7 +233,7 @@ class Vigil:
         from .decorators import _Span
         return _Span(self, step_type=step_type, name=name)
 
-    def observe(self, fn: _F | None = None, *, name: str | None = None, step_type: str = "tool_call") -> Any:
+    def observe(self, fn: _F | None = None, *, name: str | None = None, step_type: str = "tool_call") -> _F | Callable[[_F], _F]:
         """Decorator that instruments a sync function.
 
         Inside an active run: emits a tool_call step (or named step type).
@@ -248,7 +253,7 @@ class Vigil:
             return dec(fn)
         return dec
 
-    def agent(self, fn: _F | None = None, *, name: str | None = None) -> Any:
+    def agent(self, fn: _F | None = None, *, name: str | None = None) -> _F | Callable[[_F], _F]:
         """Decorator that wraps a sync function in a vigil Run.
 
         Opens a Run on call, sets _current_run ContextVar so nested

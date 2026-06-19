@@ -3,9 +3,17 @@ from __future__ import annotations
 import functools
 import time
 import warnings
-from typing import Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, Union
 
 from ._context import get_current_run
+from .async_run import AsyncRun
+from .run import Run
+
+if TYPE_CHECKING:
+    from .async_client import AsyncVigil
+    from .client import Vigil
+
+    AnyClient = Union[Vigil, AsyncVigil]
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -22,7 +30,7 @@ class _Span:
             span.set(content=f"fetched {len(docs)} docs")
     """
 
-    def __init__(self, vigil_client: Any, step_type: str, name: str | None) -> None:
+    def __init__(self, vigil_client: AnyClient, step_type: str, name: str | None) -> None:
         self._vigil = vigil_client
         self._step_type = step_type
         self._name = name
@@ -53,7 +61,7 @@ class _Span:
         latency_ms = int((time.monotonic() - self._t0) * 1000)
         try:
             run = get_current_run()
-            if run is not None:
+            if isinstance(run, Run):
                 meta = {**(self._metadata or {}), "latency_ms": latency_ms}
                 if self._name:
                     meta["span_name"] = self._name
@@ -72,7 +80,7 @@ class _AsyncSpan:
             span.set(content=f"fetched {len(docs)} docs")
     """
 
-    def __init__(self, vigil_client: Any, step_type: str, name: str | None) -> None:
+    def __init__(self, vigil_client: AnyClient, step_type: str, name: str | None) -> None:
         self._vigil = vigil_client
         self._step_type = step_type
         self._name = name
@@ -100,10 +108,11 @@ class _AsyncSpan:
         return self
 
     async def __aexit__(self, *_: Any) -> None:
+
         latency_ms = int((time.monotonic() - self._t0) * 1000)
         try:
             run = get_current_run()
-            if run is not None:
+            if isinstance(run, AsyncRun):
                 meta = {**(self._metadata or {}), "latency_ms": latency_ms}
                 if self._name:
                     meta["span_name"] = self._name
@@ -112,7 +121,7 @@ class _AsyncSpan:
             warnings.warn(f"vigil span emit failed: {e}", stacklevel=2)
 
 
-def make_observe(vigil_client: Any, name: str | None, step_type: str) -> Callable[[F], F]:
+def make_observe(vigil_client: Vigil, name: str | None, step_type: str) -> Callable[[F], F]:
     """Return a decorator that instruments a sync function."""
 
     def decorator(fn: F) -> F:
@@ -149,7 +158,7 @@ def make_observe(vigil_client: Any, name: str | None, step_type: str) -> Callabl
     return decorator
 
 
-def make_observe_async(vigil_client: Any, name: str | None, step_type: str) -> Callable[[F], F]:
+def make_observe_async(vigil_client: AsyncVigil, name: str | None, step_type: str) -> Callable[[F], F]:
     """Return a decorator that instruments an async function."""
 
     def decorator(fn: F) -> F:
@@ -186,7 +195,7 @@ def make_observe_async(vigil_client: Any, name: str | None, step_type: str) -> C
     return decorator
 
 
-def make_agent(vigil_client: Any, name: str | None) -> Callable[[F], F]:
+def make_agent(vigil_client: Vigil, name: str | None) -> Callable[[F], F]:
     """Return a decorator that wraps a sync function in a vigil Run."""
 
     def decorator(fn: F) -> F:
@@ -203,7 +212,9 @@ def make_agent(vigil_client: Any, name: str | None) -> Callable[[F], F]:
             with vigil_client.run(agent_name, input=input_str) as run:
                 result = fn(*args, **kwargs)
                 if result is not None:
-                    run.set_output(_safe_str(result))
+                    out = _safe_str(result)
+                    if out is not None:
+                        run.set_output(out)
                 return result
 
         return wrapper  # type: ignore[return-value]
@@ -211,7 +222,7 @@ def make_agent(vigil_client: Any, name: str | None) -> Callable[[F], F]:
     return decorator
 
 
-def make_agent_async(vigil_client: Any, name: str | None) -> Callable[[F], F]:
+def make_agent_async(vigil_client: AsyncVigil, name: str | None) -> Callable[[F], F]:
     """Return a decorator that wraps an async function in a vigil AsyncRun."""
 
     def decorator(fn: F) -> F:
@@ -228,7 +239,9 @@ def make_agent_async(vigil_client: Any, name: str | None) -> Callable[[F], F]:
             async with vigil_client.run(agent_name, input=input_str) as run:
                 result = await fn(*args, **kwargs)
                 if result is not None:
-                    run.set_output(_safe_str(result))
+                    out = _safe_str(result)
+                    if out is not None:
+                        run.set_output(out)
                 return result
 
         return wrapper  # type: ignore[return-value]
@@ -239,7 +252,7 @@ def make_agent_async(vigil_client: Any, name: str | None) -> Callable[[F], F]:
 # ── emit helpers ──────────────────────────────────────────────────────────────
 
 def _emit_sync(
-    vigil_client: Any,
+    vigil_client: Vigil,
     *,
     fn_name: str,
     step_type: str,
@@ -255,7 +268,7 @@ def _emit_sync(
         tool_input = _build_input(args, kwargs)
         tool_output = _build_output(result, error)
 
-        if run is not None:
+        if isinstance(run, Run):
             if step_type == "tool_call":
                 run.tool_call(
                     fn_name,
@@ -285,7 +298,7 @@ def _emit_sync(
 
 
 async def _emit_async(
-    vigil_client: Any,
+    vigil_client: AsyncVigil,
     *,
     fn_name: str,
     step_type: str,
@@ -296,12 +309,13 @@ async def _emit_async(
     latency_ms: int,
     error: BaseException | None,
 ) -> None:
+
     try:
         run = get_current_run()
         tool_input = _build_input(args, kwargs)
         tool_output = _build_output(result, error)
 
-        if run is not None:
+        if isinstance(run, AsyncRun):
             if step_type == "tool_call":
                 await run.tool_call(
                     fn_name,
@@ -351,9 +365,11 @@ def _build_output(result: Any, error: BaseException | None) -> dict:
     return {"value": _safe_str(result)}
 
 
-def _safe_str(v: Any) -> Any:
-    if isinstance(v, (str, int, float, bool)) or v is None:
-        return v
+def _safe_str(v: Any) -> str | None:
+    if v is None:
+        return None
+    if isinstance(v, str):
+        return v[:500]
     try:
         return str(v)[:500]
     except Exception:

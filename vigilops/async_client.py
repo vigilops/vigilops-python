@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from types import TracebackType
-from typing import Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 import httpx
 
 from .decorators import _AsyncSpan, make_observe_async, make_agent_async
+
+if TYPE_CHECKING:
+    from .adapters.anthropic import _AsyncAnthropicProxy
+    from .adapters.openai import _AsyncOpenAIProxy
 from .async_run import AsyncRun
 from ._client import raise_for_status
 from ._exceptions import VigilTransportError
@@ -195,7 +199,7 @@ class AsyncVigil:
     ) -> "AsyncRun":
         return AsyncRun(client=self, agent_name=agent_name, input=input, metadata=metadata)
 
-    def wrap_anthropic(self, client: Any, *, provider: str = "anthropic") -> Any:
+    def wrap_anthropic(self, client: Any, *, provider: str = "anthropic") -> "_AsyncAnthropicProxy":
         """Async sibling of Vigil.wrap_anthropic. Wraps an
         anthropic.AsyncAnthropic client — every `await
         client.messages.create(...)` records to ai_traces and auto-links
@@ -204,7 +208,7 @@ class AsyncVigil:
         from .adapters.anthropic import wrap_async_client
         return wrap_async_client(client, self, provider=provider)
 
-    def wrap_openai(self, client: Any, *, provider: str = "openai") -> Any:
+    def wrap_openai(self, client: Any, *, provider: str = "openai") -> "_AsyncOpenAIProxy":
         """Async sibling of Vigil.wrap_openai. Wraps an openai.AsyncOpenAI
         client — every `await client.chat.completions.create(...)` records
         to ai_traces and auto-links to the current AsyncRun.
@@ -223,7 +227,7 @@ class AsyncVigil:
         """
         return _AsyncSpan(self, step_type=step_type, name=name)
 
-    def observe(self, fn: _F | None = None, *, name: str | None = None, step_type: str = "tool_call") -> Any:
+    def observe(self, fn: _F | None = None, *, name: str | None = None, step_type: str = "tool_call") -> _F | Callable[[_F], _F]:
         """Decorator that instruments an async function.
 
         Inside an active run: emits a tool_call step (or named step type).
@@ -242,7 +246,7 @@ class AsyncVigil:
             return dec(fn)
         return dec
 
-    def agent(self, fn: _F | None = None, *, name: str | None = None) -> Any:
+    def agent(self, fn: _F | None = None, *, name: str | None = None) -> _F | Callable[[_F], _F]:
         """Decorator that wraps an async function in a vigil AsyncRun.
 
         Opens an AsyncRun on call, sets _current_run ContextVar so nested

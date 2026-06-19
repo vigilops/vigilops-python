@@ -9,21 +9,24 @@ their own snapshot, so nested concurrent runs don't leak parent state.
 from __future__ import annotations
 
 from contextvars import ContextVar, Token
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
-    pass
+    from .async_run import AsyncRun
+    from .run import Run
+
+    AnyRun = Union[Run, AsyncRun]
 
 
-_current_run: ContextVar[Any | None] = ContextVar("vigil_current_run", default=None)
+_current_run: ContextVar[AnyRun | None] = ContextVar("vigil_current_run", default=None)
 
 
-def get_current_run() -> Any | None:
+def get_current_run() -> AnyRun | None:
     """Return the Run/AsyncRun currently inside its with-block, or None."""
     return _current_run.get()
 
 
-def set_current_run(run: Any) -> Token:
+def set_current_run(run: AnyRun) -> Token:
     """Set the active Run. Returns a token to pass to reset_current_run()."""
     return _current_run.set(run)
 
