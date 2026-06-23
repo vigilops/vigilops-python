@@ -30,7 +30,9 @@ class _Span:
             span.set(content=f"fetched {len(docs)} docs")
     """
 
-    def __init__(self, keelwave_client: AnyClient, step_type: str, name: str | None) -> None:
+    def __init__(
+        self, keelwave_client: AnyClient, step_type: str, name: str | None
+    ) -> None:
         self._keelwave = keelwave_client
         self._step_type = step_type
         self._name = name
@@ -65,7 +67,12 @@ class _Span:
                 meta = {**(self._metadata or {}), "latency_ms": latency_ms}
                 if self._name:
                     meta["span_name"] = self._name
-                run.step(self._step_type, content=self._content, tokens=self._tokens, metadata=meta)
+                run.step(
+                    self._step_type,
+                    content=self._content,
+                    tokens=self._tokens,
+                    metadata=meta,
+                )
         except Exception as e:
             warnings.warn(f"keelwave span emit failed: {e}", stacklevel=2)
 
@@ -80,7 +87,9 @@ class _AsyncSpan:
             span.set(content=f"fetched {len(docs)} docs")
     """
 
-    def __init__(self, keelwave_client: AnyClient, step_type: str, name: str | None) -> None:
+    def __init__(
+        self, keelwave_client: AnyClient, step_type: str, name: str | None
+    ) -> None:
         self._keelwave = keelwave_client
         self._step_type = step_type
         self._name = name
@@ -116,12 +125,19 @@ class _AsyncSpan:
                 meta = {**(self._metadata or {}), "latency_ms": latency_ms}
                 if self._name:
                     meta["span_name"] = self._name
-                await run.step(self._step_type, content=self._content, tokens=self._tokens, metadata=meta)
+                await run.step(
+                    self._step_type,
+                    content=self._content,
+                    tokens=self._tokens,
+                    metadata=meta,
+                )
         except Exception as e:
             warnings.warn(f"keelwave span emit failed: {e}", stacklevel=2)
 
 
-def make_observe(keelwave_client: Keelwave, name: str | None, step_type: str) -> Callable[[F], F]:
+def make_observe(
+    keelwave_client: Keelwave, name: str | None, step_type: str
+) -> Callable[[F], F]:
     """Return a decorator that instruments a sync function."""
 
     def decorator(fn: F) -> F:
@@ -158,7 +174,9 @@ def make_observe(keelwave_client: Keelwave, name: str | None, step_type: str) ->
     return decorator
 
 
-def make_observe_async(keelwave_client: AsyncKeelwave, name: str | None, step_type: str) -> Callable[[F], F]:
+def make_observe_async(
+    keelwave_client: AsyncKeelwave, name: str | None, step_type: str
+) -> Callable[[F], F]:
     """Return a decorator that instruments an async function."""
 
     def decorator(fn: F) -> F:
@@ -222,7 +240,9 @@ def make_agent(keelwave_client: Keelwave, name: str | None) -> Callable[[F], F]:
     return decorator
 
 
-def make_agent_async(keelwave_client: AsyncKeelwave, name: str | None) -> Callable[[F], F]:
+def make_agent_async(
+    keelwave_client: AsyncKeelwave, name: str | None
+) -> Callable[[F], F]:
     """Return a decorator that wraps an async function in a keelwave AsyncRun."""
 
     def decorator(fn: F) -> F:
@@ -250,6 +270,7 @@ def make_agent_async(keelwave_client: AsyncKeelwave, name: str | None) -> Callab
 
 
 # ── emit helpers ──────────────────────────────────────────────────────────────
+
 
 def _emit_sync(
     keelwave_client: Keelwave,
@@ -345,6 +366,7 @@ async def _emit_async(
 
 
 # ── serialisation helpers ─────────────────────────────────────────────────────
+
 
 def _build_input(args: tuple, kwargs: dict) -> dict:
     result: dict = {}

@@ -2,7 +2,12 @@ import os
 
 import pytest
 
-from keelwave import Keelwave, KeelwaveAuthError, KeelwaveTransportError, KeelwaveValidationError
+from keelwave import (
+    Keelwave,
+    KeelwaveAuthError,
+    KeelwaveTransportError,
+    KeelwaveValidationError,
+)
 
 
 def test_health_returns_ok(client):

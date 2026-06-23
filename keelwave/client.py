@@ -16,6 +16,7 @@ from .run import Run
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 
+
 class Keelwave:
     def __init__(self, api_key: str, endpoint: str = "http://localhost:8080") -> None:
         self.api_key = api_key
@@ -36,11 +37,16 @@ class Keelwave:
 
     def close(self) -> None:
         self._client.close()
-    
+
     def __enter__(self) -> "Keelwave":
         return self
 
-    def __exit__(self, _exc_type: type[BaseException] | None, _exc: BaseException | None, _tb: TracebackType | None) -> None:
+    def __exit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc: BaseException | None,
+        _tb: TracebackType | None,
+    ) -> None:
         self.close()
 
     def ingest_ai(
@@ -59,7 +65,11 @@ class Keelwave:
         agent_run_id: str | None = None,
         metadata: dict | None = None,
     ) -> Any:
-        if total_tokens is None and input_tokens is not None and output_tokens is not None:
+        if (
+            total_tokens is None
+            and input_tokens is not None
+            and output_tokens is not None
+        ):
             total_tokens = input_tokens + output_tokens
 
         payload: dict = {"model": model, "status": status}
@@ -137,7 +147,7 @@ class Keelwave:
         ):
             if v is not None:
                 payload[k] = v
-        
+
         try:
             resp = self._client.post(
                 f"/v1/ingest/agent/runs/{run_id}/finish",
@@ -199,7 +209,9 @@ class Keelwave:
     ) -> "Run":
         return Run(client=self, agent_name=agent_name, input=input, metadata=metadata)
 
-    def wrap_anthropic(self, client: Any, *, provider: str = "anthropic") -> "_SyncAnthropicProxy":
+    def wrap_anthropic(
+        self, client: Any, *, provider: str = "anthropic"
+    ) -> "_SyncAnthropicProxy":
         """Return a drop-in proxy that auto-records every messages.create
         call to ai_traces. If used inside `with keelwave.run(...) as run:`,
         ai_traces.agent_run_id is set automatically via ContextVar.
@@ -208,9 +220,12 @@ class Keelwave:
         Anthropic-compatible endpoint (e.g. "deepseek", "openrouter").
         """
         from .adapters.anthropic import wrap_client
+
         return wrap_client(client, self, provider=provider)
 
-    def wrap_openai(self, client: Any, *, provider: str = "openai") -> "_SyncOpenAIProxy":
+    def wrap_openai(
+        self, client: Any, *, provider: str = "openai"
+    ) -> "_SyncOpenAIProxy":
         """Drop-in proxy for the OpenAI sync client. Every
         chat.completions.create call records to ai_traces and
         auto-links to the active Run via ContextVar.
@@ -219,6 +234,7 @@ class Keelwave:
         endpoints (e.g. "groq", "together", "azure", "openrouter").
         """
         from .adapters.openai import wrap_client
+
         return wrap_client(client, self, provider=provider)
 
     def span(self, step_type: str = "span", *, name: str | None = None) -> "_Span":
@@ -231,9 +247,16 @@ class Keelwave:
                 span.set(content=f"fetched {len(docs)} docs")
         """
         from .decorators import _Span
+
         return _Span(self, step_type=step_type, name=name)
 
-    def observe(self, fn: _F | None = None, *, name: str | None = None, step_type: str = "tool_call") -> _F | Callable[[_F], _F]:
+    def observe(
+        self,
+        fn: _F | None = None,
+        *,
+        name: str | None = None,
+        step_type: str = "tool_call",
+    ) -> _F | Callable[[_F], _F]:
         """Decorator that instruments a sync function.
 
         Inside an active run: emits a tool_call step (or named step type).
@@ -248,12 +271,15 @@ class Keelwave:
             def web_search(q: str) -> dict: ...
         """
         from .decorators import make_observe
+
         dec = make_observe(self, name=name, step_type=step_type)
         if fn is not None:
             return dec(fn)
         return dec
 
-    def agent(self, fn: _F | None = None, *, name: str | None = None) -> _F | Callable[[_F], _F]:
+    def agent(
+        self, fn: _F | None = None, *, name: str | None = None
+    ) -> _F | Callable[[_F], _F]:
         """Decorator that wraps a sync function in a keelwave Run.
 
         Opens a Run on call, sets _current_run ContextVar so nested
@@ -268,6 +294,7 @@ class Keelwave:
             def my_agent(task: str) -> str: ...
         """
         from .decorators import make_agent
+
         dec = make_agent(self, name=name)
         if fn is not None:
             return dec(fn)

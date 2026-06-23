@@ -3,6 +3,7 @@
 Run:
     KEELWAVE_API_KEY=kw_... uv run python examples/decorator_agent.py
 """
+
 import os
 from keelwave import Keelwave
 

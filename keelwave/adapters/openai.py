@@ -62,7 +62,9 @@ def parse_response(resp: Any) -> ParsedOpenAIResponse:
     """
     usage = getattr(resp, "usage", None)
     prompt_tokens = getattr(usage, "prompt_tokens", None) if usage is not None else None
-    completion_tokens = getattr(usage, "completion_tokens", None) if usage is not None else None
+    completion_tokens = (
+        getattr(usage, "completion_tokens", None) if usage is not None else None
+    )
     total_tokens = getattr(usage, "total_tokens", None) if usage is not None else None
 
     finish_reason: str | None = None
@@ -83,10 +85,13 @@ def parse_response(resp: Any) -> ParsedOpenAIResponse:
 # ---------------------------------------------------------------------------
 # Sync wrapper
 
+
 class _SyncCompletionsProxy:
     """Proxies openai.chat.completions — only `create` is intercepted."""
 
-    def __init__(self, real_completions: Any, keelwave: Keelwave, provider: str) -> None:
+    def __init__(
+        self, real_completions: Any, keelwave: Keelwave, provider: str
+    ) -> None:
         self._real = real_completions
         self._keelwave = keelwave
         self._provider = provider
@@ -106,7 +111,9 @@ class _SyncCompletionsProxy:
         finally:
             self._record(kwargs, resp, status, err, int((time.monotonic() - t0) * 1000))
 
-    def _record(self, kwargs: dict, resp: Any, status: str, err: str | None, latency_ms: int) -> None:
+    def _record(
+        self, kwargs: dict, resp: Any, status: str, err: str | None, latency_ms: int
+    ) -> None:
         parsed = parse_response(resp) if resp is not None else None
         run = get_current_run()
         try:
@@ -145,7 +152,9 @@ class _SyncChatProxy:
 
     def __init__(self, real_chat: Any, keelwave: Keelwave, provider: str) -> None:
         self._real = real_chat
-        self.completions = _SyncCompletionsProxy(real_chat.completions, keelwave, provider)
+        self.completions = _SyncCompletionsProxy(
+            real_chat.completions, keelwave, provider
+        )
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._real, name)
@@ -163,13 +172,16 @@ class _SyncOpenAIProxy:
         return getattr(self._real, name)
 
 
-def wrap_client(client: Any, keelwave: Keelwave, *, provider: str = "openai") -> _SyncOpenAIProxy:
+def wrap_client(
+    client: Any, keelwave: Keelwave, *, provider: str = "openai"
+) -> _SyncOpenAIProxy:
     """Return a proxy that auto-records every chat.completions.create call."""
     return _SyncOpenAIProxy(client, keelwave, provider)
 
 
 # ---------------------------------------------------------------------------
 # Think-step helpers
+
 
 def _extract_reasoning(resp: Any, parsed: Any) -> str | None:
     """Return reasoning text from o1/o3 (.reasoning) or DeepSeek (.reasoning_content)."""
@@ -205,8 +217,11 @@ async def _emit_think_steps_async(run: Any, resp: Any, parsed: Any) -> None:
 # ---------------------------------------------------------------------------
 # Async wrapper
 
+
 class _AsyncCompletionsProxy:
-    def __init__(self, real_completions: Any, keelwave: AsyncKeelwave, provider: str) -> None:
+    def __init__(
+        self, real_completions: Any, keelwave: AsyncKeelwave, provider: str
+    ) -> None:
         self._real = real_completions
         self._keelwave = keelwave
         self._provider = provider
@@ -224,9 +239,13 @@ class _AsyncCompletionsProxy:
             err = str(e)[:2000]
             raise
         finally:
-            await self._record(kwargs, resp, status, err, int((time.monotonic() - t0) * 1000))
+            await self._record(
+                kwargs, resp, status, err, int((time.monotonic() - t0) * 1000)
+            )
 
-    async def _record(self, kwargs: dict, resp: Any, status: str, err: str | None, latency_ms: int) -> None:
+    async def _record(
+        self, kwargs: dict, resp: Any, status: str, err: str | None, latency_ms: int
+    ) -> None:
         parsed = parse_response(resp) if resp is not None else None
         run = get_current_run()
         try:
@@ -263,14 +282,18 @@ class _AsyncCompletionsProxy:
 class _AsyncChatProxy:
     def __init__(self, real_chat: Any, keelwave: AsyncKeelwave, provider: str) -> None:
         self._real = real_chat
-        self.completions = _AsyncCompletionsProxy(real_chat.completions, keelwave, provider)
+        self.completions = _AsyncCompletionsProxy(
+            real_chat.completions, keelwave, provider
+        )
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._real, name)
 
 
 class _AsyncOpenAIProxy:
-    def __init__(self, real_client: Any, keelwave: AsyncKeelwave, provider: str) -> None:
+    def __init__(
+        self, real_client: Any, keelwave: AsyncKeelwave, provider: str
+    ) -> None:
         self._real = real_client
         self.chat = _AsyncChatProxy(real_client.chat, keelwave, provider)
 
@@ -278,5 +301,7 @@ class _AsyncOpenAIProxy:
         return getattr(self._real, name)
 
 
-def wrap_async_client(client: Any, keelwave: AsyncKeelwave, *, provider: str = "openai") -> _AsyncOpenAIProxy:
+def wrap_async_client(
+    client: Any, keelwave: AsyncKeelwave, *, provider: str = "openai"
+) -> _AsyncOpenAIProxy:
     return _AsyncOpenAIProxy(client, keelwave, provider)

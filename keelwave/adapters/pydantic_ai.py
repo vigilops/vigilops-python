@@ -51,7 +51,6 @@ async def run_with_steps(
     Stores token usage on the run when available.
     Returns the AgentRunResult.
     """
-    
 
     pending_calls: dict[str, tuple[str, dict[str, Any], int]] = {}
 
@@ -64,13 +63,15 @@ async def run_with_steps(
                 tool_name = event.part.tool_name
                 try:
                     args: dict[str, Any] = (
-                        event.part.args
-                        if isinstance(event.part.args, dict)
-                        else {}
+                        event.part.args if isinstance(event.part.args, dict) else {}
                     )
                 except Exception:
                     args = {}
-                pending_calls[event.tool_call_id] = (tool_name, args, run._step_index + 1)
+                pending_calls[event.tool_call_id] = (
+                    tool_name,
+                    args,
+                    run._step_index + 1,
+                )
 
             elif isinstance(event, FunctionToolResultEvent):
                 call_id = event.tool_call_id
@@ -87,12 +88,17 @@ async def run_with_steps(
                 except Exception:
                     output_str = ""
 
-                ok = not isinstance(part, type) and getattr(part, "is_error", False) is False
+                ok = (
+                    not isinstance(part, type)
+                    and getattr(part, "is_error", False) is False
+                )
                 try:
                     output = {"result": output_str[:2000]} if output_str else {}
                     run.tool_call(tool_name, input=tool_input, output=output, ok=ok)
                 except Exception as e:
-                    warnings.warn(f"keelwave pydantic-ai step emit failed: {e}", stacklevel=2)
+                    warnings.warn(
+                        f"keelwave pydantic-ai step emit failed: {e}", stacklevel=2
+                    )
 
     result = await agent.run(
         user_prompt,
@@ -133,13 +139,15 @@ async def async_run_with_steps(
                 tool_name = event.part.tool_name
                 try:
                     args: dict[str, Any] = (
-                        event.part.args
-                        if isinstance(event.part.args, dict)
-                        else {}
+                        event.part.args if isinstance(event.part.args, dict) else {}
                     )
                 except Exception:
                     args = {}
-                pending_calls[event.tool_call_id] = (tool_name, args, run._step_index + 1)
+                pending_calls[event.tool_call_id] = (
+                    tool_name,
+                    args,
+                    run._step_index + 1,
+                )
 
             elif isinstance(event, FunctionToolResultEvent):
                 call_id = event.tool_call_id
@@ -156,12 +164,19 @@ async def async_run_with_steps(
                 except Exception:
                     output_str = ""
 
-                ok = not isinstance(part, type) and getattr(part, "is_error", False) is False
+                ok = (
+                    not isinstance(part, type)
+                    and getattr(part, "is_error", False) is False
+                )
                 try:
                     output = {"result": output_str[:2000]} if output_str else {}
-                    await run.tool_call(tool_name, input=tool_input, output=output, ok=ok)
+                    await run.tool_call(
+                        tool_name, input=tool_input, output=output, ok=ok
+                    )
                 except Exception as e:
-                    warnings.warn(f"keelwave pydantic-ai step emit failed: {e}", stacklevel=2)
+                    warnings.warn(
+                        f"keelwave pydantic-ai step emit failed: {e}", stacklevel=2
+                    )
 
     result = await agent.run(
         user_prompt,
@@ -201,13 +216,19 @@ async def instrument(
     existing = get_current_run()
 
     if isinstance(existing, Run):
-        return await run_with_steps(existing, agent, user_prompt, deps=deps, **run_kwargs)
+        return await run_with_steps(
+            existing, agent, user_prompt, deps=deps, **run_kwargs
+        )
     if isinstance(existing, AsyncRun):
-        return await async_run_with_steps(existing, agent, user_prompt, deps=deps, **run_kwargs)
+        return await async_run_with_steps(
+            existing, agent, user_prompt, deps=deps, **run_kwargs
+        )
 
     name = agent_name or getattr(agent, "name", None) or "pydantic-ai-agent"
     if isinstance(keelwave_client, AsyncKeelwave):
         async with keelwave_client.run(name, input=user_prompt) as run:
-            return await async_run_with_steps(run, agent, user_prompt, deps=deps, **run_kwargs)
+            return await async_run_with_steps(
+                run, agent, user_prompt, deps=deps, **run_kwargs
+            )
     with keelwave_client.run(name, input=user_prompt) as run:
         return await run_with_steps(run, agent, user_prompt, deps=deps, **run_kwargs)
