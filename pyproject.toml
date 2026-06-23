@@ -1,10 +1,10 @@
 [project]
-name = "vigilops"
+name = "keelwave"
 version = "0.1.0"
-description = "Python SDK for the vigilops observability platform"
+description = "Python SDK for the keelwave observability platform"
 readme = "README.md"
 authors = [
-    { name = "vigilops", email = "developers@vigilops.com" }
+    { name = "keelwave", email = "developers@keelwave.com" }
 ]
 requires-python = ">=3.10"
 dependencies = [

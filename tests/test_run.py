@@ -3,7 +3,7 @@ import time
 import httpx
 import pytest
 
-from vigilops import Run
+from keelwave import Run
 
 
 def test_run_lifecycle_completes_with_steps(client):

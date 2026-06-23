@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 from ._context import reset_current_run, set_current_run
 
 if TYPE_CHECKING:
-    from .async_client import AsyncVigil
+    from .async_client import AsyncKeelwave
 
 
 class AsyncRun:
@@ -19,7 +19,7 @@ class AsyncRun:
     def __init__(
         self,
         *,
-        client: AsyncVigil,
+        client: AsyncKeelwave,
         agent_name: str,
         input: str | None = None,
         metadata: dict | None = None,

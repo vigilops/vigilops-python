@@ -1720,6 +1720,45 @@ wheels = [
 ]
 
 [[package]]
+name = "keelwave"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic-ai" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "anthropic" },
+    { name = "ddgs" },
+    { name = "mypy" },
+    { name = "openai" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-dotenv" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "pydantic-ai", specifier = ">=1.107.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "anthropic", specifier = ">=0.109.1" },
+    { name = "ddgs", specifier = ">=9.14.4" },
+    { name = "mypy", specifier = ">=1.0.0,<2" },
+    { name = "openai", specifier = ">=2.41.0" },
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest-asyncio", specifier = ">=1.4.0" },
+    { name = "pytest-dotenv", specifier = ">=0.5.2" },
+    { name = "ruff", specifier = ">=0.15.16" },
+]
+
+[[package]]
 name = "keyring"
 version = "25.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4050,45 +4089,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c4/1f/fa18009dea8469069cca78a4e877a008ab78f08b064bfc9ab891579077ff/uvicorn-0.49.0.tar.gz", hash = "sha256:ebf4271aa580d9de97f93192d4595176df6e91f9aae919ca73e4fc07df1e66a3", size = 91284, upload-time = "2026-06-03T22:01:30.448Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/88/fa/e1388bbcf24ef3274f45c0c1c7b501fd14971037c1b6ee23610553307497/uvicorn-0.49.0-py3-none-any.whl", hash = "sha256:ba3d14c3ee7e41c6c654c46c9eb489d33213cdd30aa1696eab1374337c13f68f", size = 71376, upload-time = "2026-06-03T22:01:29.037Z" },
-]
-
-[[package]]
-name = "vigilops"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "httpx" },
-    { name = "pydantic-ai" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "anthropic" },
-    { name = "ddgs" },
-    { name = "mypy" },
-    { name = "openai" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-dotenv" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "pydantic-ai", specifier = ">=1.107.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "anthropic", specifier = ">=0.109.1" },
-    { name = "ddgs", specifier = ">=9.14.4" },
-    { name = "mypy", specifier = ">=1.0.0,<2" },
-    { name = "openai", specifier = ">=2.41.0" },
-    { name = "pytest", specifier = ">=9.0.3" },
-    { name = "pytest-asyncio", specifier = ">=1.4.0" },
-    { name = "pytest-dotenv", specifier = ">=0.5.2" },
-    { name = "ruff", specifier = ">=0.15.16" },
 ]
 
 [[package]]

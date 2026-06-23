@@ -11,12 +11,12 @@ if TYPE_CHECKING:
 import httpx
 
 from ._client import raise_for_status
-from ._exceptions import VigilTransportError
+from ._exceptions import KeelwaveTransportError
 from .run import Run
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 
-class Vigil:
+class Keelwave:
     def __init__(self, api_key: str, endpoint: str = "http://localhost:8080") -> None:
         self.api_key = api_key
         self.endpoint = endpoint
@@ -30,14 +30,14 @@ class Vigil:
         try:
             resp = self._client.get("/v1/health")
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
 
     def close(self) -> None:
         self._client.close()
     
-    def __enter__(self) -> "Vigil":
+    def __enter__(self) -> "Keelwave":
         return self
 
     def __exit__(self, _exc_type: type[BaseException] | None, _exc: BaseException | None, _tb: TracebackType | None) -> None:
@@ -82,7 +82,7 @@ class Vigil:
         try:
             resp = self._client.post("/v1/ingest/ai", json=payload)
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
 
@@ -102,7 +102,7 @@ class Vigil:
         try:
             resp = self._client.post("/v1/ingest/agent/runs", json=payload)
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
 
@@ -144,7 +144,7 @@ class Vigil:
                 json=payload,
             )
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
 
     def ingest_agent_step(
@@ -186,7 +186,7 @@ class Vigil:
         try:
             resp = self._client.post("/v1/ingest/agent/steps", json=payload)
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
 
@@ -201,7 +201,7 @@ class Vigil:
 
     def wrap_anthropic(self, client: Any, *, provider: str = "anthropic") -> "_SyncAnthropicProxy":
         """Return a drop-in proxy that auto-records every messages.create
-        call to ai_traces. If used inside `with vigil.run(...) as run:`,
+        call to ai_traces. If used inside `with keelwave.run(...) as run:`,
         ai_traces.agent_run_id is set automatically via ContextVar.
 
         Provider defaults to "anthropic". Override when hitting an
@@ -254,7 +254,7 @@ class Vigil:
         return dec
 
     def agent(self, fn: _F | None = None, *, name: str | None = None) -> _F | Callable[[_F], _F]:
-        """Decorator that wraps a sync function in a vigil Run.
+        """Decorator that wraps a sync function in a keelwave Run.
 
         Opens a Run on call, sets _current_run ContextVar so nested
         @observe calls auto-link, closes the Run on return or exception.

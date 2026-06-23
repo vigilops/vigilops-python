@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     AnyRun = Union[Run, AsyncRun]
 
 
-_current_run: ContextVar[AnyRun | None] = ContextVar("vigil_current_run", default=None)
+_current_run: ContextVar[AnyRun | None] = ContextVar("keelwave_current_run", default=None)
 
 
 def get_current_run() -> AnyRun | None:

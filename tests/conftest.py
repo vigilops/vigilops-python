@@ -4,9 +4,9 @@ import httpx
 import pytest
 import pytest_asyncio
 
-from vigilops import AsyncVigil, Vigil
+from keelwave import AsyncKeelwave, Keelwave
 
-_ENDPOINT = os.getenv("VIGILOPS_ENDPOINT", "http://localhost:8080")
+_ENDPOINT = os.getenv("KEELWAVE_ENDPOINT", "http://localhost:8080")
 _ADMIN_BASE = f"{_ENDPOINT}/v1/admin"
 
 
@@ -47,7 +47,7 @@ def _server_reachable() -> bool:
 @pytest.fixture(scope="session")
 def _sync_project():
     if not _server_reachable():
-        pytest.skip("vigil server not reachable — run `make db-up && make run` in core/")
+        pytest.skip("keelwave server not reachable — run `make db-up && make run` in core/")
     project_id, api_key = _provision_key("pytest-sync-session")
     yield api_key
     _delete_project(project_id)
@@ -56,7 +56,7 @@ def _sync_project():
 @pytest.fixture(scope="session")
 def _async_project():
     if not _server_reachable():
-        pytest.skip("vigil server not reachable — run `make db-up && make run` in core/")
+        pytest.skip("keelwave server not reachable — run `make db-up && make run` in core/")
     project_id, api_key = _provision_key("pytest-async-session")
     yield api_key
     _delete_project(project_id)
@@ -66,11 +66,11 @@ def _async_project():
 
 @pytest.fixture
 def client(_sync_project):
-    with Vigil(api_key=_sync_project, endpoint=_ENDPOINT) as c:
+    with Keelwave(api_key=_sync_project, endpoint=_ENDPOINT) as c:
         yield c
 
 
 @pytest_asyncio.fixture
 async def async_client(_async_project):
-    async with AsyncVigil(api_key=_async_project, endpoint=_ENDPOINT) as c:
+    async with AsyncKeelwave(api_key=_async_project, endpoint=_ENDPOINT) as c:
         yield c

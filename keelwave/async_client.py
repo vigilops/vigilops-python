@@ -12,12 +12,12 @@ if TYPE_CHECKING:
     from .adapters.openai import _AsyncOpenAIProxy
 from .async_run import AsyncRun
 from ._client import raise_for_status
-from ._exceptions import VigilTransportError
+from ._exceptions import KeelwaveTransportError
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 
 
-class AsyncVigil:
+class AsyncKeelwave:
     def __init__(self, api_key: str, endpoint: str = "http://localhost:8080") -> None:
         self.api_key = api_key
         self.endpoint = endpoint
@@ -31,14 +31,14 @@ class AsyncVigil:
         try:
             resp = await self._client.get("/v1/health")
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
 
     async def aclose(self) -> None:
         await self._client.aclose()
 
-    async def __aenter__(self) -> "AsyncVigil":
+    async def __aenter__(self) -> "AsyncKeelwave":
         return self
 
     async def __aexit__(self, _exc_type: type[BaseException] | None, _exc: BaseException | None, _tb: TracebackType | None) -> None:
@@ -83,7 +83,7 @@ class AsyncVigil:
         try:
             resp = await self._client.post("/v1/ingest/ai", json=payload)
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
     
@@ -104,7 +104,7 @@ class AsyncVigil:
         try:
             resp = await self._client.post("/v1/ingest/agent/runs", json=payload)
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
 
@@ -144,7 +144,7 @@ class AsyncVigil:
         try:
             resp = await self._client.post(f"/v1/ingest/agent/runs/{run_id}/finish", json=payload)
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
 
     async def ingest_agent_step(
@@ -186,7 +186,7 @@ class AsyncVigil:
         try:
             resp = await self._client.post("/v1/ingest/agent/steps", json=payload)
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
     
@@ -200,7 +200,7 @@ class AsyncVigil:
         return AsyncRun(client=self, agent_name=agent_name, input=input, metadata=metadata)
 
     def wrap_anthropic(self, client: Any, *, provider: str = "anthropic") -> "_AsyncAnthropicProxy":
-        """Async sibling of Vigil.wrap_anthropic. Wraps an
+        """Async sibling of Keelwave.wrap_anthropic. Wraps an
         anthropic.AsyncAnthropic client — every `await
         client.messages.create(...)` records to ai_traces and auto-links
         to the current AsyncRun via ContextVar.
@@ -209,7 +209,7 @@ class AsyncVigil:
         return wrap_async_client(client, self, provider=provider)
 
     def wrap_openai(self, client: Any, *, provider: str = "openai") -> "_AsyncOpenAIProxy":
-        """Async sibling of Vigil.wrap_openai. Wraps an openai.AsyncOpenAI
+        """Async sibling of Keelwave.wrap_openai. Wraps an openai.AsyncOpenAI
         client — every `await client.chat.completions.create(...)` records
         to ai_traces and auto-links to the current AsyncRun.
         """
@@ -247,7 +247,7 @@ class AsyncVigil:
         return dec
 
     def agent(self, fn: _F | None = None, *, name: str | None = None) -> _F | Callable[[_F], _F]:
-        """Decorator that wraps an async function in a vigil AsyncRun.
+        """Decorator that wraps an async function in a keelwave AsyncRun.
 
         Opens an AsyncRun on call, sets _current_run ContextVar so nested
         @observe calls auto-link, closes the run on return or exception.

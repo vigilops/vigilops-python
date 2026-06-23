@@ -41,7 +41,7 @@ jobs:
           python-version: "3.13"
           enable-cache: true
       - run: uv sync --locked
-      - run: uv run --frozen mypy vigilops --no-error-summary
+      - run: uv run --frozen mypy keelwave --no-error-summary
 
   all-passed:
     runs-on: ubuntu-latest

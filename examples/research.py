@@ -1,4 +1,4 @@
-"""Multi-turn Claude research agent, traced by vigil.
+"""Multi-turn Claude research agent, traced by keelwave.
 
 Demonstrates @observe + @agent decorators:
 - `@client.observe` on `web_search` auto-records every tool call as an
@@ -12,7 +12,7 @@ import os
 
 import anthropic
 
-from vigilops import Vigil
+from keelwave import Keelwave
 
 from tools import web_search as _web_search
 
@@ -31,15 +31,15 @@ TOOLS = [
     },
 ]
 
-vigil_client = Vigil(
-    api_key=os.environ["VIGILOPS_API_KEY"],
-    endpoint=os.environ.get("VIGILOPS_ENDPOINT", "http://localhost:8080"),
+keelwave_client = Keelwave(
+    api_key=os.environ["KEELWAVE_API_KEY"],
+    endpoint=os.environ.get("KEELWAVE_ENDPOINT", "http://localhost:8080"),
 )
 
 model = os.environ.get("CLAUDE_MODEL", "deepseek-v4-pro")
 provider = os.environ.get("LLM_PROVIDER", "deepseek")
 
-claude = vigil_client.wrap_anthropic(
+claude = keelwave_client.wrap_anthropic(
     anthropic.Anthropic(
         api_key=os.environ["ANTHROPIC_API_KEY"],
         base_url=os.environ.get("ANTHROPIC_ENDPOINT", "https://api.deepseek.com/anthropic"),
@@ -48,12 +48,12 @@ claude = vigil_client.wrap_anthropic(
 )
 
 
-@vigil_client.observe(name="web_search", step_type="tool_call")
+@keelwave_client.observe(name="web_search", step_type="tool_call")
 def web_search(q: str, max_results: int = 5) -> dict:
     return {"results": _web_search(q, max_results=max_results)}
 
 
-@vigil_client.agent(name="research-agent")
+@keelwave_client.agent(name="research-agent")
 def run_agent(question: str) -> str:
     MAX_TURNS = 8
     messages = [{"role": "user", "content": question}]

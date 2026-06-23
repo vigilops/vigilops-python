@@ -10,11 +10,11 @@ from typing import TYPE_CHECKING, Any
 from ._context import reset_current_run, set_current_run
 
 if TYPE_CHECKING:
-    from .client import Vigil
+    from .client import Keelwave
 
 
 class Run:
-    """An open agent run. Created via Vigil.run() and entered with `with`.
+    """An open agent run. Created via Keelwave.run() and entered with `with`.
 
     The context manager POSTs to /v1/ingest/agent/runs on entry, accumulates
     step / token / cost totals across the with-block, and POSTs to
@@ -27,7 +27,7 @@ class Run:
     def __init__(
         self,
         *,
-        client: Vigil,
+        client: Keelwave,
         agent_name: str,
         input: str | None = None,
         metadata: dict | None = None,

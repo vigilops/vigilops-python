@@ -3,7 +3,7 @@
 `parse_response` collapses the ThinkingBlock / TextBlock / ToolUseBlock
 dispatch every Anthropic caller writes by hand. `wrap_client` returns a
 proxy that intercepts `.messages.create(...)`, times the call, and
-records a row in vigil's `ai_traces` table — auto-linked to the active
+records a row in keelwave's `ai_traces` table — auto-linked to the active
 `Run` if one is open (via the ContextVar set in Run.__enter__).
 
 Anthropic is an optional dependency: imports happen inside functions so
@@ -19,8 +19,8 @@ from typing import TYPE_CHECKING, Any
 from .._context import get_current_run
 
 if TYPE_CHECKING:
-    from ..async_client import AsyncVigil
-    from ..client import Vigil
+    from ..async_client import AsyncKeelwave
+    from ..client import Keelwave
 
 
 @dataclass
@@ -31,7 +31,7 @@ class ParsedAnthropicResponse:
     Only fields that have been stable across Anthropic SDK versions
     appear here — id, usage, stop_reason. The full response is kept in
     `raw` so callers can walk `raw.content` (text / thinking / tool_use
-    blocks) themselves; that surface evolves and is not vigil's job to
+    blocks) themselves; that surface evolves and is not keelwave's job to
     track.
     """
 
@@ -75,9 +75,9 @@ def parse_response(resp: Any) -> ParsedAnthropicResponse:
 class _SyncMessagesProxy:
     """Proxies anthropic.Messages — only `create` is intercepted."""
 
-    def __init__(self, real_messages: Any, vigil: Vigil, provider: str) -> None:
+    def __init__(self, real_messages: Any, keelwave: Keelwave, provider: str) -> None:
         self._real = real_messages
-        self._vigil = vigil
+        self._keelwave = keelwave
         self._provider = provider
 
     def create(self, **kwargs: Any) -> Any:
@@ -99,7 +99,7 @@ class _SyncMessagesProxy:
         usage = getattr(resp, "usage", None) if resp is not None else None
         run = get_current_run()
         try:
-            self._vigil.ingest_ai(
+            self._keelwave.ingest_ai(
                 model=kwargs.get("model", "unknown"),
                 status=status,
                 provider=self._provider,
@@ -134,17 +134,17 @@ class _SyncAnthropicProxy:
     """Drop-in wrapper around anthropic.Anthropic. Only `.messages` is
     swapped; every other attribute delegates to the real client."""
 
-    def __init__(self, real_client: Any, vigil: Vigil, provider: str) -> None:
+    def __init__(self, real_client: Any, keelwave: Keelwave, provider: str) -> None:
         self._real = real_client
-        self.messages = _SyncMessagesProxy(real_client.messages, vigil, provider)
+        self.messages = _SyncMessagesProxy(real_client.messages, keelwave, provider)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._real, name)
 
 
-def wrap_client(client: Any, vigil: Vigil, *, provider: str = "anthropic") -> _SyncAnthropicProxy:
+def wrap_client(client: Any, keelwave: Keelwave, *, provider: str = "anthropic") -> _SyncAnthropicProxy:
     """Return a proxy that auto-records every messages.create() call."""
-    return _SyncAnthropicProxy(client, vigil, provider)
+    return _SyncAnthropicProxy(client, keelwave, provider)
 
 
 # ---------------------------------------------------------------------------
@@ -177,9 +177,9 @@ async def _emit_think_steps_async(run: Any, resp: Any, usage: Any) -> None:
 # Async wrapper — mirrors the sync version
 
 class _AsyncMessagesProxy:
-    def __init__(self, real_messages: Any, vigil: AsyncVigil, provider: str) -> None:
+    def __init__(self, real_messages: Any, keelwave: AsyncKeelwave, provider: str) -> None:
         self._real = real_messages
-        self._vigil = vigil
+        self._keelwave = keelwave
         self._provider = provider
 
     async def create(self, **kwargs: Any) -> Any:
@@ -201,7 +201,7 @@ class _AsyncMessagesProxy:
         usage = getattr(resp, "usage", None) if resp is not None else None
         run = get_current_run()
         try:
-            await self._vigil.ingest_ai(
+            await self._keelwave.ingest_ai(
                 model=kwargs.get("model", "unknown"),
                 status=status,
                 provider=self._provider,
@@ -232,14 +232,14 @@ class _AsyncMessagesProxy:
 
 
 class _AsyncAnthropicProxy:
-    def __init__(self, real_client: Any, vigil: AsyncVigil, provider: str) -> None:
+    def __init__(self, real_client: Any, keelwave: AsyncKeelwave, provider: str) -> None:
         self._real = real_client
-        self.messages = _AsyncMessagesProxy(real_client.messages, vigil, provider)
+        self.messages = _AsyncMessagesProxy(real_client.messages, keelwave, provider)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._real, name)
 
 
-def wrap_async_client(client: Any, vigil: AsyncVigil, *, provider: str = "anthropic") -> _AsyncAnthropicProxy:
+def wrap_async_client(client: Any, keelwave: AsyncKeelwave, *, provider: str = "anthropic") -> _AsyncAnthropicProxy:
     """Async sibling of wrap_client."""
-    return _AsyncAnthropicProxy(client, vigil, provider)
+    return _AsyncAnthropicProxy(client, keelwave, provider)
