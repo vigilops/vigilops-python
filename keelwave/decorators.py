@@ -10,10 +10,10 @@ from .async_run import AsyncRun
 from .run import Run
 
 if TYPE_CHECKING:
-    from .async_client import AsyncVigil
-    from .client import Vigil
+    from .async_client import AsyncKeelwave
+    from .client import Keelwave
 
-    AnyClient = Union[Vigil, AsyncVigil]
+    AnyClient = Union[Keelwave, AsyncKeelwave]
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -30,8 +30,10 @@ class _Span:
             span.set(content=f"fetched {len(docs)} docs")
     """
 
-    def __init__(self, vigil_client: AnyClient, step_type: str, name: str | None) -> None:
-        self._vigil = vigil_client
+    def __init__(
+        self, keelwave_client: AnyClient, step_type: str, name: str | None
+    ) -> None:
+        self._keelwave = keelwave_client
         self._step_type = step_type
         self._name = name
         self._content: str | None = None
@@ -65,9 +67,14 @@ class _Span:
                 meta = {**(self._metadata or {}), "latency_ms": latency_ms}
                 if self._name:
                     meta["span_name"] = self._name
-                run.step(self._step_type, content=self._content, tokens=self._tokens, metadata=meta)
+                run.step(
+                    self._step_type,
+                    content=self._content,
+                    tokens=self._tokens,
+                    metadata=meta,
+                )
         except Exception as e:
-            warnings.warn(f"vigil span emit failed: {e}", stacklevel=2)
+            warnings.warn(f"keelwave span emit failed: {e}", stacklevel=2)
 
 
 class _AsyncSpan:
@@ -80,8 +87,10 @@ class _AsyncSpan:
             span.set(content=f"fetched {len(docs)} docs")
     """
 
-    def __init__(self, vigil_client: AnyClient, step_type: str, name: str | None) -> None:
-        self._vigil = vigil_client
+    def __init__(
+        self, keelwave_client: AnyClient, step_type: str, name: str | None
+    ) -> None:
+        self._keelwave = keelwave_client
         self._step_type = step_type
         self._name = name
         self._content: str | None = None
@@ -116,12 +125,19 @@ class _AsyncSpan:
                 meta = {**(self._metadata or {}), "latency_ms": latency_ms}
                 if self._name:
                     meta["span_name"] = self._name
-                await run.step(self._step_type, content=self._content, tokens=self._tokens, metadata=meta)
+                await run.step(
+                    self._step_type,
+                    content=self._content,
+                    tokens=self._tokens,
+                    metadata=meta,
+                )
         except Exception as e:
-            warnings.warn(f"vigil span emit failed: {e}", stacklevel=2)
+            warnings.warn(f"keelwave span emit failed: {e}", stacklevel=2)
 
 
-def make_observe(vigil_client: Vigil, name: str | None, step_type: str) -> Callable[[F], F]:
+def make_observe(
+    keelwave_client: Keelwave, name: str | None, step_type: str
+) -> Callable[[F], F]:
     """Return a decorator that instruments a sync function."""
 
     def decorator(fn: F) -> F:
@@ -142,7 +158,7 @@ def make_observe(vigil_client: Vigil, name: str | None, step_type: str) -> Calla
                 latency_ms = int((time.monotonic() - t0) * 1000)
                 ok = exc_caught is None
                 _emit_sync(
-                    vigil_client,
+                    keelwave_client,
                     fn_name=fn_name,
                     step_type=step_type,
                     args=args,
@@ -158,7 +174,9 @@ def make_observe(vigil_client: Vigil, name: str | None, step_type: str) -> Calla
     return decorator
 
 
-def make_observe_async(vigil_client: AsyncVigil, name: str | None, step_type: str) -> Callable[[F], F]:
+def make_observe_async(
+    keelwave_client: AsyncKeelwave, name: str | None, step_type: str
+) -> Callable[[F], F]:
     """Return a decorator that instruments an async function."""
 
     def decorator(fn: F) -> F:
@@ -179,7 +197,7 @@ def make_observe_async(vigil_client: AsyncVigil, name: str | None, step_type: st
                 latency_ms = int((time.monotonic() - t0) * 1000)
                 ok = exc_caught is None
                 await _emit_async(
-                    vigil_client,
+                    keelwave_client,
                     fn_name=fn_name,
                     step_type=step_type,
                     args=args,
@@ -195,8 +213,8 @@ def make_observe_async(vigil_client: AsyncVigil, name: str | None, step_type: st
     return decorator
 
 
-def make_agent(vigil_client: Vigil, name: str | None) -> Callable[[F], F]:
-    """Return a decorator that wraps a sync function in a vigil Run."""
+def make_agent(keelwave_client: Keelwave, name: str | None) -> Callable[[F], F]:
+    """Return a decorator that wraps a sync function in a keelwave Run."""
 
     def decorator(fn: F) -> F:
         agent_name = name or fn.__name__
@@ -209,7 +227,7 @@ def make_agent(vigil_client: Vigil, name: str | None) -> Callable[[F], F]:
             elif "input" in kwargs:
                 input_str = _safe_str(kwargs["input"])
 
-            with vigil_client.run(agent_name, input=input_str) as run:
+            with keelwave_client.run(agent_name, input=input_str) as run:
                 result = fn(*args, **kwargs)
                 if result is not None:
                     out = _safe_str(result)
@@ -222,8 +240,10 @@ def make_agent(vigil_client: Vigil, name: str | None) -> Callable[[F], F]:
     return decorator
 
 
-def make_agent_async(vigil_client: AsyncVigil, name: str | None) -> Callable[[F], F]:
-    """Return a decorator that wraps an async function in a vigil AsyncRun."""
+def make_agent_async(
+    keelwave_client: AsyncKeelwave, name: str | None
+) -> Callable[[F], F]:
+    """Return a decorator that wraps an async function in a keelwave AsyncRun."""
 
     def decorator(fn: F) -> F:
         agent_name = name or fn.__name__
@@ -236,7 +256,7 @@ def make_agent_async(vigil_client: AsyncVigil, name: str | None) -> Callable[[F]
             elif "input" in kwargs:
                 input_str = _safe_str(kwargs["input"])
 
-            async with vigil_client.run(agent_name, input=input_str) as run:
+            async with keelwave_client.run(agent_name, input=input_str) as run:
                 result = await fn(*args, **kwargs)
                 if result is not None:
                     out = _safe_str(result)
@@ -251,8 +271,9 @@ def make_agent_async(vigil_client: AsyncVigil, name: str | None) -> Callable[[F]
 
 # ── emit helpers ──────────────────────────────────────────────────────────────
 
+
 def _emit_sync(
-    vigil_client: Vigil,
+    keelwave_client: Keelwave,
     *,
     fn_name: str,
     step_type: str,
@@ -285,7 +306,7 @@ def _emit_sync(
                     metadata={"fn": fn_name, "latency_ms": latency_ms},
                 )
         else:
-            vigil_client.ingest_ai(
+            keelwave_client.ingest_ai(
                 model=fn_name,
                 provider="observe",
                 status="success" if ok else "error",
@@ -294,11 +315,11 @@ def _emit_sync(
                 metadata={"input": tool_input, "output": tool_output},
             )
     except Exception as emit_err:
-        warnings.warn(f"vigil observe emit failed: {emit_err}", stacklevel=3)
+        warnings.warn(f"keelwave observe emit failed: {emit_err}", stacklevel=3)
 
 
 async def _emit_async(
-    vigil_client: AsyncVigil,
+    keelwave_client: AsyncKeelwave,
     *,
     fn_name: str,
     step_type: str,
@@ -332,7 +353,7 @@ async def _emit_async(
                     metadata={"fn": fn_name, "latency_ms": latency_ms},
                 )
         else:
-            await vigil_client.ingest_ai(
+            await keelwave_client.ingest_ai(
                 model=fn_name,
                 provider="observe",
                 status="success" if ok else "error",
@@ -341,10 +362,11 @@ async def _emit_async(
                 metadata={"input": tool_input, "output": tool_output},
             )
     except Exception as emit_err:
-        warnings.warn(f"vigil observe emit failed: {emit_err}", stacklevel=3)
+        warnings.warn(f"keelwave observe emit failed: {emit_err}", stacklevel=3)
 
 
 # ── serialisation helpers ─────────────────────────────────────────────────────
+
 
 def _build_input(args: tuple, kwargs: dict) -> dict:
     result: dict = {}

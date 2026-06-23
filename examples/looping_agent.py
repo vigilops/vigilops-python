@@ -1,6 +1,6 @@
 """Deliberately broken agent that runs the same web search forever.
 
-Demonstrates vigil's headline differentiator: @observe tracks tool_call
+Demonstrates keelwave's headline differentiator: @observe tracks tool_call
 fingerprints client-side — duplicate SHA-256 → run.mark_loop() fires
 automatically. Zero user code for loop detection.
 
@@ -13,26 +13,26 @@ import time
 
 import httpx
 
-from vigilops import Vigil, get_current_run
+from keelwave import Keelwave, get_current_run
 
 from tools import web_search as _web_search
 
 
-TARGET_QUERY = "vigil observability platform"
+TARGET_QUERY = "keelwave observability platform"
 LOOP_TURNS = 5
 
-vigil_key = os.environ["VIGILOPS_API_KEY"]
-vigil_endpoint = os.environ.get("VIGILOPS_ENDPOINT", "http://localhost:8080")
+keelwave_key = os.environ["KEELWAVE_API_KEY"]
+keelwave_endpoint = os.environ.get("KEELWAVE_ENDPOINT", "http://localhost:8080")
 
-vigil_client = Vigil(api_key=vigil_key, endpoint=vigil_endpoint)
+keelwave_client = Keelwave(api_key=keelwave_key, endpoint=keelwave_endpoint)
 
 
-@vigil_client.observe(name="web_search", step_type="tool_call")
+@keelwave_client.observe(name="web_search", step_type="tool_call")
 def web_search(q: str, max_results: int = 3) -> dict:
     return {"results": _web_search(q, max_results=max_results)}
 
 
-@vigil_client.agent(name="looping-agent")
+@keelwave_client.agent(name="looping-agent")
 def run_loop(question: str) -> str:
     run = get_current_run()
 
@@ -50,10 +50,10 @@ def main() -> None:
     # Wait for batch buffer flush
     time.sleep(0.7)
 
-    loops_url = f"{vigil_endpoint}/v1/agent/runs/{run_id}/loops"
+    loops_url = f"{keelwave_endpoint}/v1/agent/runs/{run_id}/loops"
     resp = httpx.get(
         loops_url,
-        headers={"Authorization": f"Bearer {vigil_key}"},
+        headers={"Authorization": f"Bearer {keelwave_key}"},
         timeout=5.0,
     )
     resp.raise_for_status()
@@ -62,8 +62,10 @@ def main() -> None:
     print(f"\nrun_id: {run_id}")
     print(f"loops endpoint returned {len(hits)} fingerprint group(s):")
     for h in hits:
-        print(f"  hits={h['hits']:>3}  tool={h.get('tool_name')!r:<20} "
-              f"first_step={h['step_indices'][0]}  later_steps={h['step_indices'][1:]}")
+        print(
+            f"  hits={h['hits']:>3}  tool={h.get('tool_name')!r:<20} "
+            f"first_step={h['step_indices'][0]}  later_steps={h['step_indices'][1:]}"
+        )
 
     if not any(h["hits"] >= 2 for h in hits):
         raise SystemExit("expected at least one fingerprint group with hits >= 2")

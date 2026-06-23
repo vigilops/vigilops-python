@@ -1,28 +1,37 @@
-# src/vigil/_exceptions.py
+# src/keelwave/_exceptions.py
 
-class VigilError(Exception):
-    """Base for all vigil SDK errors. Users catch this to handle ALL SDK failures."""
 
-class VigilAuthError(VigilError):
+class KeelwaveError(Exception):
+    """Base for all keelwave SDK errors. Users catch this to handle ALL SDK failures."""
+
+
+class KeelwaveAuthError(KeelwaveError):
     """401 — API key missing, malformed, or revoked."""
 
-class VigilValidationError(VigilError):
+
+class KeelwaveValidationError(KeelwaveError):
     """400 — payload rejected by server validator."""
 
-class VigilRateLimited(VigilError):
+
+class KeelwaveRateLimited(KeelwaveError):
     """429 — per-IP or per-key bucket exhausted."""
+
     def __init__(self, message: str, retry_after: int | None = None):
         super().__init__(message)
         self.retry_after = retry_after
 
-class VigilBufferFull(VigilError):
+
+class KeelwaveBufferFull(KeelwaveError):
     """503 — ingest buffer full server-side. Retry after Retry-After seconds."""
+
     def __init__(self, message: str, retry_after: int | None = None):
         super().__init__(message)
         self.retry_after = retry_after
 
-class VigilServerError(VigilError):
+
+class KeelwaveServerError(KeelwaveError):
     """5xx — server bug or DB outage."""
 
-class VigilTransportError(VigilError):
+
+class KeelwaveTransportError(KeelwaveError):
     """Network failure — DNS, TCP, TLS, connection refused, timeout."""

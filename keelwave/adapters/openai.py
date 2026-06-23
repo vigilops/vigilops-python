@@ -1,9 +1,9 @@
 """Helpers + drop-in wrappers for the OpenAI SDK.
 
-Symmetric to `vigil.adapters.anthropic`. `parse_response` exposes the
+Symmetric to `keelwave.adapters.anthropic`. `parse_response` exposes the
 universal observability fields (id, tokens, finish_reason) from a
 chat.completions response. `wrap_client` returns a proxy that records
-every `chat.completions.create` call to vigil's `ai_traces` table —
+every `chat.completions.create` call to keelwave's `ai_traces` table —
 auto-linked to the active `Run` if one is open (via ContextVar).
 
 OpenAI is an optional dependency: imports happen inside the wrapper.
@@ -24,8 +24,8 @@ from typing import TYPE_CHECKING, Any
 from .._context import get_current_run
 
 if TYPE_CHECKING:
-    from ..async_client import AsyncVigil
-    from ..client import Vigil
+    from ..async_client import AsyncKeelwave
+    from ..client import Keelwave
 
 
 @dataclass
@@ -33,7 +33,7 @@ class ParsedOpenAIResponse:
     """Universal observability fields extracted from a
     chat.completions.create response.
 
-    Field names normalized to vigil's internal vocab (input_tokens /
+    Field names normalized to keelwave's internal vocab (input_tokens /
     output_tokens) so dashboards don't have to know which provider sent
     the trace. The full response stays in `raw` for the caller to walk
     `choices[0].message.content` / `.tool_calls` themselves.
@@ -62,7 +62,9 @@ def parse_response(resp: Any) -> ParsedOpenAIResponse:
     """
     usage = getattr(resp, "usage", None)
     prompt_tokens = getattr(usage, "prompt_tokens", None) if usage is not None else None
-    completion_tokens = getattr(usage, "completion_tokens", None) if usage is not None else None
+    completion_tokens = (
+        getattr(usage, "completion_tokens", None) if usage is not None else None
+    )
     total_tokens = getattr(usage, "total_tokens", None) if usage is not None else None
 
     finish_reason: str | None = None
@@ -83,12 +85,15 @@ def parse_response(resp: Any) -> ParsedOpenAIResponse:
 # ---------------------------------------------------------------------------
 # Sync wrapper
 
+
 class _SyncCompletionsProxy:
     """Proxies openai.chat.completions — only `create` is intercepted."""
 
-    def __init__(self, real_completions: Any, vigil: Vigil, provider: str) -> None:
+    def __init__(
+        self, real_completions: Any, keelwave: Keelwave, provider: str
+    ) -> None:
         self._real = real_completions
-        self._vigil = vigil
+        self._keelwave = keelwave
         self._provider = provider
 
     def create(self, **kwargs: Any) -> Any:
@@ -106,11 +111,13 @@ class _SyncCompletionsProxy:
         finally:
             self._record(kwargs, resp, status, err, int((time.monotonic() - t0) * 1000))
 
-    def _record(self, kwargs: dict, resp: Any, status: str, err: str | None, latency_ms: int) -> None:
+    def _record(
+        self, kwargs: dict, resp: Any, status: str, err: str | None, latency_ms: int
+    ) -> None:
         parsed = parse_response(resp) if resp is not None else None
         run = get_current_run()
         try:
-            self._vigil.ingest_ai(
+            self._keelwave.ingest_ai(
                 model=kwargs.get("model", "unknown"),
                 status=status,
                 provider=self._provider,
@@ -143,9 +150,11 @@ class _SyncCompletionsProxy:
 class _SyncChatProxy:
     """Sits between the OpenAI client and its `.completions` attr."""
 
-    def __init__(self, real_chat: Any, vigil: Vigil, provider: str) -> None:
+    def __init__(self, real_chat: Any, keelwave: Keelwave, provider: str) -> None:
         self._real = real_chat
-        self.completions = _SyncCompletionsProxy(real_chat.completions, vigil, provider)
+        self.completions = _SyncCompletionsProxy(
+            real_chat.completions, keelwave, provider
+        )
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._real, name)
@@ -155,21 +164,24 @@ class _SyncOpenAIProxy:
     """Drop-in wrapper around openai.OpenAI. Only `.chat.completions`
     is intercepted; everything else delegates to the real client."""
 
-    def __init__(self, real_client: Any, vigil: Vigil, provider: str) -> None:
+    def __init__(self, real_client: Any, keelwave: Keelwave, provider: str) -> None:
         self._real = real_client
-        self.chat = _SyncChatProxy(real_client.chat, vigil, provider)
+        self.chat = _SyncChatProxy(real_client.chat, keelwave, provider)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._real, name)
 
 
-def wrap_client(client: Any, vigil: Vigil, *, provider: str = "openai") -> _SyncOpenAIProxy:
+def wrap_client(
+    client: Any, keelwave: Keelwave, *, provider: str = "openai"
+) -> _SyncOpenAIProxy:
     """Return a proxy that auto-records every chat.completions.create call."""
-    return _SyncOpenAIProxy(client, vigil, provider)
+    return _SyncOpenAIProxy(client, keelwave, provider)
 
 
 # ---------------------------------------------------------------------------
 # Think-step helpers
+
 
 def _extract_reasoning(resp: Any, parsed: Any) -> str | None:
     """Return reasoning text from o1/o3 (.reasoning) or DeepSeek (.reasoning_content)."""
@@ -205,10 +217,13 @@ async def _emit_think_steps_async(run: Any, resp: Any, parsed: Any) -> None:
 # ---------------------------------------------------------------------------
 # Async wrapper
 
+
 class _AsyncCompletionsProxy:
-    def __init__(self, real_completions: Any, vigil: AsyncVigil, provider: str) -> None:
+    def __init__(
+        self, real_completions: Any, keelwave: AsyncKeelwave, provider: str
+    ) -> None:
         self._real = real_completions
-        self._vigil = vigil
+        self._keelwave = keelwave
         self._provider = provider
 
     async def create(self, **kwargs: Any) -> Any:
@@ -224,13 +239,17 @@ class _AsyncCompletionsProxy:
             err = str(e)[:2000]
             raise
         finally:
-            await self._record(kwargs, resp, status, err, int((time.monotonic() - t0) * 1000))
+            await self._record(
+                kwargs, resp, status, err, int((time.monotonic() - t0) * 1000)
+            )
 
-    async def _record(self, kwargs: dict, resp: Any, status: str, err: str | None, latency_ms: int) -> None:
+    async def _record(
+        self, kwargs: dict, resp: Any, status: str, err: str | None, latency_ms: int
+    ) -> None:
         parsed = parse_response(resp) if resp is not None else None
         run = get_current_run()
         try:
-            await self._vigil.ingest_ai(
+            await self._keelwave.ingest_ai(
                 model=kwargs.get("model", "unknown"),
                 status=status,
                 provider=self._provider,
@@ -261,22 +280,28 @@ class _AsyncCompletionsProxy:
 
 
 class _AsyncChatProxy:
-    def __init__(self, real_chat: Any, vigil: AsyncVigil, provider: str) -> None:
+    def __init__(self, real_chat: Any, keelwave: AsyncKeelwave, provider: str) -> None:
         self._real = real_chat
-        self.completions = _AsyncCompletionsProxy(real_chat.completions, vigil, provider)
+        self.completions = _AsyncCompletionsProxy(
+            real_chat.completions, keelwave, provider
+        )
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._real, name)
 
 
 class _AsyncOpenAIProxy:
-    def __init__(self, real_client: Any, vigil: AsyncVigil, provider: str) -> None:
+    def __init__(
+        self, real_client: Any, keelwave: AsyncKeelwave, provider: str
+    ) -> None:
         self._real = real_client
-        self.chat = _AsyncChatProxy(real_client.chat, vigil, provider)
+        self.chat = _AsyncChatProxy(real_client.chat, keelwave, provider)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._real, name)
 
 
-def wrap_async_client(client: Any, vigil: AsyncVigil, *, provider: str = "openai") -> _AsyncOpenAIProxy:
-    return _AsyncOpenAIProxy(client, vigil, provider)
+def wrap_async_client(
+    client: Any, keelwave: AsyncKeelwave, *, provider: str = "openai"
+) -> _AsyncOpenAIProxy:
+    return _AsyncOpenAIProxy(client, keelwave, provider)

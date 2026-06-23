@@ -10,11 +10,11 @@ from typing import TYPE_CHECKING, Any
 from ._context import reset_current_run, set_current_run
 
 if TYPE_CHECKING:
-    from .client import Vigil
+    from .client import Keelwave
 
 
 class Run:
-    """An open agent run. Created via Vigil.run() and entered with `with`.
+    """An open agent run. Created via Keelwave.run() and entered with `with`.
 
     The context manager POSTs to /v1/ingest/agent/runs on entry, accumulates
     step / token / cost totals across the with-block, and POSTs to
@@ -27,7 +27,7 @@ class Run:
     def __init__(
         self,
         *,
-        client: Vigil,
+        client: Keelwave,
         agent_name: str,
         input: str | None = None,
         metadata: dict | None = None,
@@ -72,7 +72,12 @@ class Run:
         self._ctx_token = set_current_run(self)
         return self
 
-    def __exit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         if self._ctx_token is not None:
             reset_current_run(self._ctx_token)
             self._ctx_token = None
@@ -140,7 +145,9 @@ class Run:
             self._total_tokens += tokens
         if cost_usd:
             self._total_cost_usd += cost_usd
-        tool_output: dict | None = output if isinstance(output, dict) else {"value": str(output)}
+        tool_output: dict | None = (
+            output if isinstance(output, dict) else {"value": str(output)}
+        )
         self._client.ingest_agent_step(
             agent_run_id=self.id,
             step_index=self._step_index,
@@ -158,7 +165,10 @@ class Run:
     def check_fingerprint(self, tool_name: str, tool_input: dict) -> None:
         """Compute SHA-256 of tool_name+input, mark loop on first duplicate."""
         fp = hashlib.sha256(
-            (tool_name + json.dumps(tool_input, sort_keys=True, separators=(",", ":"))).encode()
+            (
+                tool_name
+                + json.dumps(tool_input, sort_keys=True, separators=(",", ":"))
+            ).encode()
         ).hexdigest()
         if fp in self._seen_fingerprints:
             if not self._loop_detected:

@@ -1,12 +1,12 @@
 import httpx
 
 from ._exceptions import (
-    VigilAuthError,
-    VigilBufferFull,
-    VigilError,
-    VigilRateLimited,
-    VigilServerError,
-    VigilValidationError,
+    KeelwaveAuthError,
+    KeelwaveBufferFull,
+    KeelwaveError,
+    KeelwaveRateLimited,
+    KeelwaveServerError,
+    KeelwaveValidationError,
 )
 
 
@@ -23,17 +23,17 @@ def raise_for_status(resp: httpx.Response) -> None:
 
     match resp.status_code:
         case 400:
-            raise VigilValidationError(message)
+            raise KeelwaveValidationError(message)
         case 401:
-            raise VigilAuthError(message)
+            raise KeelwaveAuthError(message)
         case 429:
-            raise VigilRateLimited(message, retry_after=retry_after)
+            raise KeelwaveRateLimited(message, retry_after=retry_after)
         case 503:
-            raise VigilBufferFull(message, retry_after=retry_after)
+            raise KeelwaveBufferFull(message, retry_after=retry_after)
         case code if 500 <= code < 600:
-            raise VigilServerError(f"{code}: {message}")
+            raise KeelwaveServerError(f"{code}: {message}")
         case _:
-            raise VigilError(f"{resp.status_code}: {message}")
+            raise KeelwaveError(f"{resp.status_code}: {message}")
 
 
 def parse_retry_after(raw: str | None) -> int | None:

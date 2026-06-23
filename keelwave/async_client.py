@@ -12,12 +12,12 @@ if TYPE_CHECKING:
     from .adapters.openai import _AsyncOpenAIProxy
 from .async_run import AsyncRun
 from ._client import raise_for_status
-from ._exceptions import VigilTransportError
+from ._exceptions import KeelwaveTransportError
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 
 
-class AsyncVigil:
+class AsyncKeelwave:
     def __init__(self, api_key: str, endpoint: str = "http://localhost:8080") -> None:
         self.api_key = api_key
         self.endpoint = endpoint
@@ -31,17 +31,22 @@ class AsyncVigil:
         try:
             resp = await self._client.get("/v1/health")
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
 
     async def aclose(self) -> None:
         await self._client.aclose()
 
-    async def __aenter__(self) -> "AsyncVigil":
+    async def __aenter__(self) -> "AsyncKeelwave":
         return self
 
-    async def __aexit__(self, _exc_type: type[BaseException] | None, _exc: BaseException | None, _tb: TracebackType | None) -> None:
+    async def __aexit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc: BaseException | None,
+        _tb: TracebackType | None,
+    ) -> None:
         await self.aclose()
 
     async def ingest_ai(
@@ -60,7 +65,11 @@ class AsyncVigil:
         agent_run_id: str | None = None,
         metadata: dict | None = None,
     ) -> Any:
-        if total_tokens is None and input_tokens is not None and output_tokens is not None:
+        if (
+            total_tokens is None
+            and input_tokens is not None
+            and output_tokens is not None
+        ):
             total_tokens = input_tokens + output_tokens
 
         payload: dict = {"model": model, "status": status}
@@ -83,10 +92,10 @@ class AsyncVigil:
         try:
             resp = await self._client.post("/v1/ingest/ai", json=payload)
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
-    
+
     async def ingest_agent_run_start(
         self,
         *,
@@ -95,7 +104,7 @@ class AsyncVigil:
         metadata: dict | None = None,
     ) -> Any:
         payload: dict = {"agent_name": agent_name}
-        
+
         if input is not None:
             payload["input"] = input
         if metadata is not None:
@@ -104,7 +113,7 @@ class AsyncVigil:
         try:
             resp = await self._client.post("/v1/ingest/agent/runs", json=payload)
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
 
@@ -130,7 +139,7 @@ class AsyncVigil:
             "total_tokens": total_tokens,
             "loop_detected": loop_detected,
         }
-        
+
         for k, v in (
             ("termination_reason", termination_reason),
             ("total_cost_usd", total_cost_usd),
@@ -142,9 +151,11 @@ class AsyncVigil:
                 payload[k] = v
 
         try:
-            resp = await self._client.post(f"/v1/ingest/agent/runs/{run_id}/finish", json=payload)
+            resp = await self._client.post(
+                f"/v1/ingest/agent/runs/{run_id}/finish", json=payload
+            )
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
 
     async def ingest_agent_step(
@@ -186,10 +197,10 @@ class AsyncVigil:
         try:
             resp = await self._client.post("/v1/ingest/agent/steps", json=payload)
         except httpx.RequestError as e:
-            raise VigilTransportError(str(e)) from e
+            raise KeelwaveTransportError(str(e)) from e
         raise_for_status(resp)
         return resp.json()["data"]
-    
+
     def run(
         self,
         agent_name: str,
@@ -197,23 +208,31 @@ class AsyncVigil:
         input: str | None = None,
         metadata: dict | None = None,
     ) -> "AsyncRun":
-        return AsyncRun(client=self, agent_name=agent_name, input=input, metadata=metadata)
+        return AsyncRun(
+            client=self, agent_name=agent_name, input=input, metadata=metadata
+        )
 
-    def wrap_anthropic(self, client: Any, *, provider: str = "anthropic") -> "_AsyncAnthropicProxy":
-        """Async sibling of Vigil.wrap_anthropic. Wraps an
+    def wrap_anthropic(
+        self, client: Any, *, provider: str = "anthropic"
+    ) -> "_AsyncAnthropicProxy":
+        """Async sibling of Keelwave.wrap_anthropic. Wraps an
         anthropic.AsyncAnthropic client — every `await
         client.messages.create(...)` records to ai_traces and auto-links
         to the current AsyncRun via ContextVar.
         """
         from .adapters.anthropic import wrap_async_client
+
         return wrap_async_client(client, self, provider=provider)
 
-    def wrap_openai(self, client: Any, *, provider: str = "openai") -> "_AsyncOpenAIProxy":
-        """Async sibling of Vigil.wrap_openai. Wraps an openai.AsyncOpenAI
+    def wrap_openai(
+        self, client: Any, *, provider: str = "openai"
+    ) -> "_AsyncOpenAIProxy":
+        """Async sibling of Keelwave.wrap_openai. Wraps an openai.AsyncOpenAI
         client — every `await client.chat.completions.create(...)` records
         to ai_traces and auto-links to the current AsyncRun.
         """
         from .adapters.openai import wrap_async_client
+
         return wrap_async_client(client, self, provider=provider)
 
     def span(self, step_type: str = "span", *, name: str | None = None) -> "_AsyncSpan":
@@ -227,7 +246,13 @@ class AsyncVigil:
         """
         return _AsyncSpan(self, step_type=step_type, name=name)
 
-    def observe(self, fn: _F | None = None, *, name: str | None = None, step_type: str = "tool_call") -> _F | Callable[[_F], _F]:
+    def observe(
+        self,
+        fn: _F | None = None,
+        *,
+        name: str | None = None,
+        step_type: str = "tool_call",
+    ) -> _F | Callable[[_F], _F]:
         """Decorator that instruments an async function.
 
         Inside an active run: emits a tool_call step (or named step type).
@@ -246,8 +271,10 @@ class AsyncVigil:
             return dec(fn)
         return dec
 
-    def agent(self, fn: _F | None = None, *, name: str | None = None) -> _F | Callable[[_F], _F]:
-        """Decorator that wraps an async function in a vigil AsyncRun.
+    def agent(
+        self, fn: _F | None = None, *, name: str | None = None
+    ) -> _F | Callable[[_F], _F]:
+        """Decorator that wraps an async function in a keelwave AsyncRun.
 
         Opens an AsyncRun on call, sets _current_run ContextVar so nested
         @observe calls auto-link, closes the run on return or exception.

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 from ._context import reset_current_run, set_current_run
 
 if TYPE_CHECKING:
-    from .async_client import AsyncVigil
+    from .async_client import AsyncKeelwave
 
 
 class AsyncRun:
@@ -19,7 +19,7 @@ class AsyncRun:
     def __init__(
         self,
         *,
-        client: AsyncVigil,
+        client: AsyncKeelwave,
         agent_name: str,
         input: str | None = None,
         metadata: dict | None = None,
@@ -43,13 +43,17 @@ class AsyncRun:
     @property
     def id(self) -> str:
         if self._id is None:
-            raise RuntimeError("AsyncRun not started — use `async with client.run(...) as run:`")
+            raise RuntimeError(
+                "AsyncRun not started — use `async with client.run(...) as run:`"
+            )
         return self._id
 
     @property
     def timestamp(self) -> str:
         if self._timestamp is None:
-            raise RuntimeError("AsyncRun not started — use `async with client.run(...) as run:`")
+            raise RuntimeError(
+                "AsyncRun not started — use `async with client.run(...) as run:`"
+            )
         return self._timestamp
 
     async def __aenter__(self) -> AsyncRun:
@@ -64,7 +68,12 @@ class AsyncRun:
         self._ctx_token = set_current_run(self)
         return self
 
-    async def __aexit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         if self._ctx_token is not None:
             reset_current_run(self._ctx_token)
             self._ctx_token = None
@@ -132,7 +141,9 @@ class AsyncRun:
             self._total_tokens += tokens
         if cost_usd:
             self._total_cost_usd += cost_usd
-        tool_output: dict | None = output if isinstance(output, dict) else {"value": str(output)}
+        tool_output: dict | None = (
+            output if isinstance(output, dict) else {"value": str(output)}
+        )
         await self._client.ingest_agent_step(
             agent_run_id=self.id,
             step_index=self._step_index,
@@ -150,7 +161,10 @@ class AsyncRun:
     def check_fingerprint(self, tool_name: str, tool_input: dict) -> None:
         """Compute SHA-256 of tool_name+input, mark loop on first duplicate."""
         fp = hashlib.sha256(
-            (tool_name + json.dumps(tool_input, sort_keys=True, separators=(",", ":"))).encode()
+            (
+                tool_name
+                + json.dumps(tool_input, sort_keys=True, separators=(",", ":"))
+            ).encode()
         ).hexdigest()
         if fp in self._seen_fingerprints:
             if not self._loop_detected:

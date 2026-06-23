@@ -3,14 +3,17 @@ import asyncio
 import httpx
 import pytest
 
+
 @pytest.mark.asyncio
 async def test_async_run_lifecycle_completes_with_steps(async_client):
-    from vigilops import AsyncRun
+    from keelwave import AsyncRun
+
     async with async_client.run("async-test-agent", input="hi") as run:
         assert isinstance(run, AsyncRun)
         await run.step("think", "I should respond")
         await run.tool_call("echo", input={"msg": "hi"}, output="hi", ok=True)
-        run.set_output("done") 
+        run.set_output("done")
+
 
 @pytest.mark.asyncio
 async def test_async_run_marks_failed_on_exception(async_client):

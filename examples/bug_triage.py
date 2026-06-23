@@ -1,4 +1,4 @@
-"""Bug-triage agent demo. Uses OpenAI + vigil.wrap_openai.
+"""Bug-triage agent demo. Uses OpenAI + keelwave.wrap_openai.
 
 Demonstrates @observe + @agent decorators:
 - `@client.observe` on each tool (`list_dir`, `read_file`, `grep`) auto-records
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import openai
 
-from vigilops import Vigil
+from keelwave import Keelwave
 
 
 FIXTURE_DIR = Path(__file__).parent / "_fixture_buggy"
@@ -37,15 +37,15 @@ file and line, suggest the one-line fix.
 """.strip()
 
 
-vigil_client = Vigil(
-    api_key=os.environ["VIGILOPS_API_KEY"],
-    endpoint=os.environ.get("VIGILOPS_ENDPOINT", "http://localhost:8080"),
+keelwave_client = Keelwave(
+    api_key=os.environ["KEELWAVE_API_KEY"],
+    endpoint=os.environ.get("KEELWAVE_ENDPOINT", "http://localhost:8080"),
 )
 
 model = os.environ.get("OPENAI_MODEL", "deepseek-v4-flash")
 provider = os.environ.get("LLM_PROVIDER", "deepseek")
 
-openai_client = vigil_client.wrap_openai(
+openai_client = keelwave_client.wrap_openai(
     openai.OpenAI(
         api_key=os.environ["OPENAI_API_KEY"],
         base_url=os.environ.get("OPENAI_ENDPOINT", "https://api.deepseek.com"),
@@ -56,6 +56,7 @@ openai_client = vigil_client.wrap_openai(
 
 # ── tools ─────────────────────────────────────────────────────────────────────
 
+
 def _safe_path(rel: str) -> Path:
     p = (FIXTURE_DIR / rel).resolve()
     if FIXTURE_DIR.resolve() not in p.parents and p != FIXTURE_DIR.resolve():
@@ -63,7 +64,7 @@ def _safe_path(rel: str) -> Path:
     return p
 
 
-@vigil_client.observe(name="list_dir", step_type="tool_call")
+@keelwave_client.observe(name="list_dir", step_type="tool_call")
 def list_dir(rel: str = ".") -> list:
     base = _safe_path(rel)
     return sorted(
@@ -73,19 +74,21 @@ def list_dir(rel: str = ".") -> list:
     )
 
 
-@vigil_client.observe(name="read_file", step_type="tool_call")
+@keelwave_client.observe(name="read_file", step_type="tool_call")
 def read_file(rel: str) -> str:
     return _safe_path(rel).read_text(encoding="utf-8")
 
 
-@vigil_client.observe(name="grep", step_type="tool_call")
+@keelwave_client.observe(name="grep", step_type="tool_call")
 def grep(pattern: str, rel: str = ".") -> list:
     base = _safe_path(rel)
     out: list[str] = []
     targets = [base] if base.is_file() else list(base.rglob("*.py"))
     for f in targets:
         try:
-            for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), start=1):
+            for i, line in enumerate(
+                f.read_text(encoding="utf-8").splitlines(), start=1
+            ):
                 if pattern in line:
                     out.append(f"{f.relative_to(FIXTURE_DIR)}:{i}:{line}")
         except (OSError, UnicodeDecodeError):
@@ -104,7 +107,10 @@ TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "rel": {"type": "string", "description": "relative path; '.' for root"},
+                    "rel": {
+                        "type": "string",
+                        "description": "relative path; '.' for root",
+                    },
                 },
             },
         },
@@ -132,7 +138,10 @@ TOOLS = [
                 "type": "object",
                 "properties": {
                     "pattern": {"type": "string"},
-                    "rel": {"type": "string", "description": "subdir or file; '.' for all"},
+                    "rel": {
+                        "type": "string",
+                        "description": "subdir or file; '.' for all",
+                    },
                 },
                 "required": ["pattern"],
             },
@@ -153,7 +162,8 @@ SYSTEM_PROMPT = (
 
 # ── agent ─────────────────────────────────────────────────────────────────────
 
-@vigil_client.agent(name="bug-triage-agent")
+
+@keelwave_client.agent(name="bug-triage-agent")
 def run_agent(report: str) -> str:
     MAX_TURNS = 12
     messages = [
@@ -192,40 +202,51 @@ def run_agent(report: str) -> str:
                 args = {"_raw": tc.function.arguments}
 
             if impl is None:
-                tool_results.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": json.dumps({"error": f"unknown tool: {name}"}),
-                })
+                tool_results.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": json.dumps({"error": f"unknown tool: {name}"}),
+                    }
+                )
                 continue
 
             # impl is @observe-decorated — tool_call step emitted automatically
             try:
                 result = impl(**args)
-                tool_results.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": json.dumps({"result": result}),
-                })
+                tool_results.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": json.dumps({"result": result}),
+                    }
+                )
             except Exception as e:
-                tool_results.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": json.dumps({"error": str(e)[:500]}),
-                })
+                tool_results.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": json.dumps({"error": str(e)[:500]}),
+                    }
+                )
 
-        messages.append({
-            "role": "assistant",
-            "content": text,
-            "tool_calls": [
-                {
-                    "id": tc.id,
-                    "type": "function",
-                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
-                }
-                for tc in tool_calls
-            ],
-        })
+        messages.append(
+            {
+                "role": "assistant",
+                "content": text,
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    for tc in tool_calls
+                ],
+            }
+        )
         messages.extend(tool_results)
     else:
         raise RuntimeError(f"agent exceeded {MAX_TURNS} turns")
